@@ -48,3 +48,8 @@ supabase/.temp
 
 # Real student rosters (personal data) - never commit
 templates/*.xlsx
+
+# graphify: track the graph and report, not machine-specific files or the rebuildable cache
+graphify-out/cache/
+graphify-out/.graphify_python
+graphify-out/.graphify_root
