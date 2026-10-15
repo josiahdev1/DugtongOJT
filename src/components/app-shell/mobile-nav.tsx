@@ -13,20 +13,23 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { NavItem } from "./nav";
+import { NAV, type Role } from "./nav";
 
 // The sidebar for phones and tablets: a drawer opened from the top bar.
 export function MobileNav({
-  items,
+  role,
   active,
   counts,
   roleLabel,
 }: {
-  items: NavItem[];
+  role: Role;
   active: string;
   counts?: Partial<Record<string, number>>;
   roleLabel: string;
 }) {
+  // The server cannot pass icon components to the browser, only plain data,
+  // so this component looks up the links (and their icons) from the role.
+  const items = NAV[role];
   return (
     <Sheet>
       <SheetTrigger

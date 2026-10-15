@@ -28,7 +28,7 @@ type AppShellProps = {
   crumbs?: Crumb[];
   /** Buttons for the page, shown beside the title. */
   actions?: React.ReactNode;
-  user: { email: string | null | undefined };
+  user: { email?: string | null };
   /** The school or company the person works for, shown above the menu. */
   org?: { name: string; verified?: boolean };
   /** Small "needs attention" numbers shown beside a sidebar item. */
@@ -122,15 +122,12 @@ export function AppShell({
           })}
         </nav>
 
-        <p className="mt-auto p-5 text-xs leading-5 text-muted-foreground">
-          Signed in as a {roleLabel.toLowerCase()}.
-        </p>
       </aside>
 
       <div className="min-w-0">
         {/* Top bar */}
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:px-8">
-          <MobileNav items={items} active={active} counts={counts} roleLabel={roleLabel} />
+          <MobileNav role={role} active={active} counts={counts} roleLabel={roleLabel} />
 
           <Breadcrumb className="min-w-0 flex-1">
             <BreadcrumbList className="flex-nowrap">
