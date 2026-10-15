@@ -9,6 +9,14 @@ import {
 } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
 import { CompanyForm } from "./company-form";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -55,23 +63,23 @@ export default async function CompaniesPage() {
               No companies yet. Add your first one above.
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-[var(--radius)] border border-border">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-secondary text-xs text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Company</th>
-                    <th className="px-3 py-2 font-medium">Supervisor</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <div className="rounded-[var(--radius)] border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Supervisor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {companies.map((c) => (
-                    <tr key={c.id} className="border-t border-border">
-                      <td className="px-3 py-2">{c.name}</td>
-                      <td className="px-3 py-2">{c.supervisor_name}</td>
-                    </tr>
+                    <TableRow key={c.id}>
+                      <TableCell>{c.name}</TableCell>
+                      <TableCell>{c.supervisor_name}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>

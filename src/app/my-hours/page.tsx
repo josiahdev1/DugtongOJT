@@ -7,6 +7,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { getCurrentUser } from "@/lib/auth";
 import {
   MAX_DAYS_BACK,
@@ -18,14 +28,9 @@ import {
 } from "@/lib/time";
 import { signOut } from "../login/actions";
 import { LogForm } from "./log-form";
+import { RoleShell } from "@/components/role-shell";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  approved: "Approved",
-  rejected: "Rejected",
-};
 
 export default async function MyHoursPage() {
   const { user, school, supabase } = await getCurrentUser();
@@ -61,58 +66,80 @@ export default async function MyHoursPage() {
     .filter((e) => e.status === "approved")
     .reduce((sum, e) => sum + hoursBetween(e.time_in, e.time_out), 0);
 
+  const pendingHours = (entries ?? [])
+    .filter((e) => e.status === "pending")
+    .reduce((sum, e) => sum + hoursBetween(e.time_in, e.time_out), 0);
+
   const today = todayInManila();
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
+    <RoleShell active="hours" role="Student" title="My OJT hours" subtitle={`${student.course} · ${company?.name ?? "No company"}`}>
+    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-6 pb-24 lg:px-8 lg:pb-8">
+      {/* Student Top Shell */}
+      <header className="sr-only">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {student.name}
-          </h1>
-          <p className="text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-medium tracking-tight text-foreground">
+              {student.name}
+            </h1>
+            <Badge variant="verified">Student</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
             {student.course} · {company?.name ?? "No company"} ·{" "}
-            <span className="font-mono text-xs">{student.student_no}</span>
+            <span className="font-mono">{student.student_no}</span>
           </p>
         </div>
         <form action={signOut}>
-          <Button type="submit" variant="outline">
+          <Button type="submit" variant="ghost" size="sm">
             Sign out
           </Button>
         </form>
       </header>
 
+      {/* Progress & Summary Card */}
       <Card>
-        <CardHeader>
-          <CardTitle>Approved hours</CardTitle>
+        <CardHeader className="p-5 pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle>Approved progress</CardTitle>
+            <Badge variant="trust">
+              {Math.round((approvedHours / student.required_hours) * 100)}% Complete
+            </Badge>
+          </div>
           <CardDescription>
-            Only hours your coordinator has approved count.
+            Only hours your coordinator has verified and approved count toward your requirement.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          <p className="text-2xl font-semibold tabular-nums">
-            {formatHours(approvedHours)}{" "}
-            <span className="text-base font-normal text-muted-foreground">
-              of {student.required_hours} hours
-            </span>
-          </p>
-          <progress
-            className="h-2 w-full overflow-hidden rounded-full [&::-moz-progress-bar]:bg-primary [&::-webkit-progress-bar]:bg-secondary [&::-webkit-progress-value]:bg-primary"
-            value={Math.min(approvedHours, student.required_hours)}
+        <CardContent className="flex flex-col gap-3 p-5 pt-0">
+          <div className="flex items-baseline justify-between">
+            <p className="text-2xl font-medium tabular-nums text-foreground">
+              {formatHours(approvedHours)}{" "}
+              <span className="text-sm font-normal text-muted-foreground">
+                of {student.required_hours} hours required
+              </span>
+            </p>
+            {pendingHours > 0 && (
+              <span className="text-xs text-warning-text font-medium">
+                +{formatHours(pendingHours)} pending approval
+              </span>
+            )}
+          </div>
+          <Progress
+            value={approvedHours}
             max={student.required_hours}
-            aria-label="Approved hours progress"
+            className="h-2"
           />
         </CardContent>
       </Card>
 
+      {/* Log Hours Form Card */}
       <Card>
-        <CardHeader>
+        <CardHeader className="p-5 pb-3">
           <CardTitle>Log a day</CardTitle>
           <CardDescription>
-            Today or up to {MAX_DAYS_BACK} days back. One entry per day.
+            Record your shift for today or up to {MAX_DAYS_BACK} days back.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-5 pt-0">
           <LogForm
             today={today}
             earliest={shiftDate(today, -MAX_DAYS_BACK)}
@@ -120,56 +147,69 @@ export default async function MyHoursPage() {
         </CardContent>
       </Card>
 
+      {/* Time Entries Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="p-5 pb-3">
           <CardTitle>Your entries</CardTitle>
+          <CardDescription>
+            History of all your submitted daily time entries.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {!entries || entries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nothing logged yet.
-            </p>
-          ) : (
-            <div className="overflow-x-auto rounded-[var(--radius)] border border-border">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-secondary text-xs text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Date</th>
-                    <th className="px-3 py-2 font-medium">In</th>
-                    <th className="px-3 py-2 font-medium">Out</th>
-                    <th className="px-3 py-2 text-right font-medium">Hours</th>
-                    <th className="px-3 py-2 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {entries.map((e) => (
-                    <tr key={e.id} className="border-t border-border">
-                      <td className="px-3 py-2 tabular-nums">{e.work_date}</td>
-                      <td className="px-3 py-2 tabular-nums">
-                        {shortTime(e.time_in)}
-                      </td>
-                      <td className="px-3 py-2 tabular-nums">
-                        {shortTime(e.time_out)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {formatHours(hoursBetween(e.time_in, e.time_out))}
-                      </td>
-                      <td className="px-3 py-2">
-                        {STATUS_LABEL[e.status] ?? e.status}
-                        {e.status === "rejected" && (
-                          <span className="block text-xs text-muted-foreground">
-                            Log this day again to fix and resubmit it.
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              Nothing logged yet. Submit your first entry above.
             </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Time in</TableHead>
+                  <TableHead>Time out</TableHead>
+                  <TableHead className="text-right">Hours</TableHead>
+                  <TableHead className="text-right">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {entries.map((e) => (
+                  <TableRow key={e.id}>
+                    <TableCell className="font-mono text-xs tabular-nums text-foreground">
+                      {e.work_date}
+                    </TableCell>
+                    <TableCell className="tabular-nums text-muted-foreground">
+                      {shortTime(e.time_in)}
+                    </TableCell>
+                    <TableCell className="tabular-nums text-muted-foreground">
+                      {shortTime(e.time_out)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs font-medium tabular-nums text-foreground">
+                      {formatHours(hoursBetween(e.time_in, e.time_out))} hrs
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {e.status === "approved" ? (
+                        <Badge variant="approved">Approved</Badge>
+                      ) : e.status === "pending" ? (
+                        <Badge variant="pending">Pending</Badge>
+                      ) : e.status === "rejected" ? (
+                        <div className="flex flex-col items-end gap-1">
+                          <Badge variant="rejected">Rejected</Badge>
+                          <span className="text-[11px] text-muted-foreground">
+                            Resubmit via log form
+                          </span>
+                        </div>
+                      ) : (
+                        <Badge variant="secondary">{e.status}</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
     </main>
+    </RoleShell>
   );
 }

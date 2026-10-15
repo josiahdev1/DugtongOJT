@@ -8,6 +8,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { getCurrentUser } from "@/lib/auth";
 import { formatHours, hoursBetween, shortTime } from "@/lib/time";
 import { decideEntry } from "./actions";
@@ -17,12 +27,6 @@ export const dynamic = "force-dynamic";
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  approved: "Approved",
-  rejected: "Rejected",
-};
-
 type Snapshot = {
   status?: string;
   work_date?: string;
@@ -30,12 +34,11 @@ type Snapshot = {
   time_out?: string;
 };
 
-// "pending → approved" or "08:00–17:00 → 08:00–18:00", whichever changed.
 function describeChange(oldV: Snapshot, newV: Snapshot) {
   const parts: string[] = [];
   if (oldV.status !== newV.status) {
     parts.push(
-      `${STATUS_LABEL[oldV.status ?? ""] ?? oldV.status} → ${STATUS_LABEL[newV.status ?? ""] ?? newV.status}`,
+      `${oldV.status ?? ""} → ${newV.status ?? ""}`,
     );
   }
   if (oldV.time_in !== newV.time_in || oldV.time_out !== newV.time_out) {
@@ -114,185 +117,213 @@ export default async function StudentDetailPage({
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8">
-      <Link
-        href="/dashboard"
-        className="w-fit text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
-      >
-        ← Dashboard
-      </Link>
+      <div>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center text-xs font-medium text-muted-foreground hover:text-foreground"
+        >
+          ← Back to Dashboard
+        </Link>
+      </div>
 
-      <header className="flex flex-wrap items-start justify-between gap-4">
+      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-5">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {student.name}
-          </h1>
-          <p className="text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-medium tracking-tight text-foreground">
+              {student.name}
+            </h1>
+            <Badge variant="verified">Student</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
             {student.course} · {company?.name ?? "No company"} ·{" "}
-            <span className="font-mono text-xs">{student.student_no}</span> ·{" "}
+            <span className="font-mono">{student.student_no}</span> ·{" "}
             {student.email}
           </p>
         </div>
-        <Link href={`/students/${id}/report`} className={buttonVariants()}>
+        <Link href={`/students/${id}/report`} className={buttonVariants({ size: "sm" })}>
           Generate report
         </Link>
       </header>
 
       {error && (
-        <p role="alert" className="text-sm font-medium text-destructive">
+        <div
+          role="alert"
+          className="rounded-[8px] border border-destructive/30 bg-destructive-bg p-3 text-xs font-medium text-destructive-text"
+        >
           {error}
-        </p>
+        </div>
       )}
 
+      {/* Progress Card */}
       <Card>
-        <CardHeader>
-          <CardTitle>Approved hours</CardTitle>
+        <CardHeader className="p-5 pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle>Hours progress</CardTitle>
+            <Badge variant="trust">
+              {Math.round((approved / student.required_hours) * 100)}% Complete
+            </Badge>
+          </div>
           <CardDescription>
             {pending > 0
               ? `${pending} ${pending === 1 ? "entry is" : "entries are"} waiting for your decision.`
-              : "Nothing is waiting for your decision."}
+              : "All entries have been reviewed."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          <p className="text-2xl font-semibold tabular-nums">
+        <CardContent className="flex flex-col gap-3 p-5 pt-0">
+          <p className="text-2xl font-medium tabular-nums text-foreground">
             {formatHours(approved)}{" "}
-            <span className="text-base font-normal text-muted-foreground">
-              of {student.required_hours} hours
+            <span className="text-sm font-normal text-muted-foreground">
+              of {student.required_hours} hours required
             </span>
           </p>
-          <progress
-            className="h-2 w-full overflow-hidden rounded-full [&::-moz-progress-bar]:bg-primary [&::-webkit-progress-bar]:bg-secondary [&::-webkit-progress-value]:bg-primary"
-            value={Math.min(approved, student.required_hours)}
+          <Progress
+            value={approved}
             max={student.required_hours}
-            aria-label="Approved hours progress"
+            className="h-2"
           />
         </CardContent>
       </Card>
 
+      {/* Time Entries Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Time entries</CardTitle>
-          <CardDescription>
-            Approve or reject each day. You can change a decision later; every
-            change is logged below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!entries || entries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              This student has not logged any hours yet.
-            </p>
-          ) : (
-            <div className="overflow-x-auto rounded-[var(--radius)] border border-border">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-secondary text-xs text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Date</th>
-                    <th className="px-3 py-2 font-medium">In</th>
-                    <th className="px-3 py-2 font-medium">Out</th>
-                    <th className="px-3 py-2 text-right font-medium">Hours</th>
-                    <th className="px-3 py-2 font-medium">Status</th>
-                    <th className="px-3 py-2 font-medium">Decision</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {entries.map((e) => (
-                    <tr key={e.id} className="border-t border-border">
-                      <td className="px-3 py-2 tabular-nums">{e.work_date}</td>
-                      <td className="px-3 py-2 tabular-nums">
-                        {shortTime(e.time_in)}
-                      </td>
-                      <td className="px-3 py-2 tabular-nums">
-                        {shortTime(e.time_out)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {formatHours(hoursBetween(e.time_in, e.time_out))}
-                      </td>
-                      <td className="px-3 py-2">
-                        {STATUS_LABEL[e.status] ?? e.status}
-                      </td>
-                      <td className="px-3 py-2">
-                        <form action={decideEntry} className="flex gap-2">
-                          <input type="hidden" name="entry_id" value={e.id} />
-                          <input type="hidden" name="student_id" value={id} />
-                          {e.status !== "approved" && (
-                            <Button
-                              type="submit"
-                              size="sm"
-                              name="decision"
-                              value="approved"
-                            >
-                              Approve
-                            </Button>
-                          )}
-                          {e.status !== "rejected" && (
-                            <Button
-                              type="submit"
-                              size="sm"
-                              variant="outline"
-                              name="decision"
-                              value="rejected"
-                            >
-                              Reject
-                            </Button>
-                          )}
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <CardHeader className="p-5 pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Time entries</CardTitle>
+              <CardDescription>
+                Approve or reject student-logged hours. Decisions are audit-logged below.
+              </CardDescription>
             </div>
+            {pending > 0 && (
+              <Badge variant="pending">
+                {pending} pending
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {!entries || entries.length === 0 ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              This student has not logged any hours yet.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>In</TableHead>
+                  <TableHead>Out</TableHead>
+                  <TableHead className="text-right">Hours</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Decision</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {entries.map((e) => (
+                  <TableRow key={e.id}>
+                    <TableCell className="font-mono text-xs tabular-nums text-foreground">
+                      {e.work_date}
+                    </TableCell>
+                    <TableCell className="tabular-nums text-muted-foreground">
+                      {shortTime(e.time_in)}
+                    </TableCell>
+                    <TableCell className="tabular-nums text-muted-foreground">
+                      {shortTime(e.time_out)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs font-medium tabular-nums text-foreground">
+                      {formatHours(hoursBetween(e.time_in, e.time_out))} hrs
+                    </TableCell>
+                    <TableCell>
+                      {e.status === "approved" ? (
+                        <Badge variant="approved">Approved</Badge>
+                      ) : e.status === "pending" ? (
+                        <Badge variant="pending">Pending</Badge>
+                      ) : e.status === "rejected" ? (
+                        <Badge variant="rejected">Rejected</Badge>
+                      ) : (
+                        <Badge variant="secondary">{e.status}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <form action={decideEntry} className="inline-flex gap-2">
+                        <input type="hidden" name="entry_id" value={e.id} />
+                        <input type="hidden" name="student_id" value={id} />
+                        {e.status !== "approved" && (
+                          <Button
+                            type="submit"
+                            size="sm"
+                            name="decision"
+                            value="approved"
+                          >
+                            Approve
+                          </Button>
+                        )}
+                        {e.status !== "rejected" && (
+                          <Button
+                            type="submit"
+                            size="sm"
+                            variant="secondary"
+                            name="decision"
+                            value="rejected"
+                          >
+                            Reject
+                          </Button>
+                        )}
+                      </form>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
 
+      {/* Change / Audit History */}
       <Card>
-        <CardHeader>
+        <CardHeader className="p-5 pb-3">
           <CardTitle>Change history</CardTitle>
           <CardDescription>
-            Every decision and every change after one. Nobody can edit this
-            list.
+            Audit log of all decisions and subsequent modifications.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {!changes || changes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No decisions yet.
-            </p>
-          ) : (
-            <div className="overflow-x-auto rounded-[var(--radius)] border border-border">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-secondary text-xs text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">When</th>
-                    <th className="px-3 py-2 font-medium">By</th>
-                    <th className="px-3 py-2 font-medium">Day</th>
-                    <th className="px-3 py-2 font-medium">Change</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {changes.map((c) => (
-                    <tr key={c.id} className="border-t border-border">
-                      <td className="px-3 py-2 tabular-nums">
-                        {formatWhen(c.changed_at)}
-                      </td>
-                      <td className="px-3 py-2">
-                        {c.changed_by === user.id ? "You" : "Student"}
-                      </td>
-                      <td className="px-3 py-2 tabular-nums">
-                        {dateOf.get(c.entry_id) ?? "—"}
-                      </td>
-                      <td className="px-3 py-2">
-                        {describeChange(
-                          c.old_values as Snapshot,
-                          c.new_values as Snapshot,
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              No decisions recorded yet.
             </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Timestamp</TableHead>
+                  <TableHead>Actor</TableHead>
+                  <TableHead>Shift date</TableHead>
+                  <TableHead>Change</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {changes.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
+                      {formatWhen(c.changed_at)}
+                    </TableCell>
+                    <TableCell className="font-medium text-foreground">
+                      {c.changed_by === user.id ? "Coordinator" : "Student"}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
+                      {dateOf.get(c.entry_id) ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground font-mono">
+                      {describeChange(
+                        c.old_values as Snapshot,
+                        c.new_values as Snapshot,
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

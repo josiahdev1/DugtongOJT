@@ -6,6 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MAX_CHARS } from "@/lib/roster";
 import { importRoster, previewRoster, type PreviewState } from "./actions";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export function UploadForm() {
   const [text, setText] = useState("");
@@ -70,25 +78,25 @@ export function UploadForm() {
             Nothing was imported. Fix {errors.length === 1 ? "this problem" : `these ${errors.length} problems`} in
             your file and upload it again. Row 1 is the header row.
           </p>
-          <div className="overflow-x-auto rounded-[var(--radius)] border border-border">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-secondary text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Row</th>
-                  <th className="px-3 py-2 font-medium">Column</th>
-                  <th className="px-3 py-2 font-medium">Problem</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="rounded-[var(--radius)] border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Row</TableHead>
+                  <TableHead>Column</TableHead>
+                  <TableHead>Problem</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {errors.map((e, i) => (
-                  <tr key={i} className="border-t border-border">
-                    <td className="px-3 py-2 tabular-nums">{e.row}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{e.column}</td>
-                    <td className="px-3 py-2">{e.reason}</td>
-                  </tr>
+                  <TableRow key={i}>
+                    <TableCell className="tabular-nums">{e.row}</TableCell>
+                    <TableCell className="font-mono text-xs">{e.column}</TableCell>
+                    <TableCell>{e.reason}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       )}
@@ -99,33 +107,33 @@ export function UploadForm() {
             The file is valid. Check these {rows.length}{" "}
             {rows.length === 1 ? "student" : "students"}, then confirm.
           </p>
-          <div className="overflow-x-auto rounded-[var(--radius)] border border-border">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-secondary text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Name</th>
-                  <th className="px-3 py-2 font-medium">Student ID</th>
-                  <th className="px-3 py-2 font-medium">Course</th>
-                  <th className="px-3 py-2 font-medium">Email</th>
-                  <th className="px-3 py-2 font-medium">Company</th>
-                  <th className="px-3 py-2 text-right font-medium">Hours</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="rounded-[var(--radius)] border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Student ID</TableHead>
+                  <TableHead>Course</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead className="text-right">Hours</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {rows.map((r) => (
-                  <tr key={r.student_no} className="border-t border-border">
-                    <td className="px-3 py-2">{r.name}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{r.student_no}</td>
-                    <td className="px-3 py-2">{r.course}</td>
-                    <td className="px-3 py-2">{r.email}</td>
-                    <td className="px-3 py-2">{r.company_name}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">
+                  <TableRow key={r.student_no}>
+                    <TableCell>{r.name}</TableCell>
+                    <TableCell className="font-mono text-xs">{r.student_no}</TableCell>
+                    <TableCell>{r.course}</TableCell>
+                    <TableCell>{r.email}</TableCell>
+                    <TableCell>{r.company_name}</TableCell>
+                    <TableCell className="text-right tabular-nums">
                       {r.required_hours}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           <div>
             <Button onClick={onConfirm} disabled={pending}>

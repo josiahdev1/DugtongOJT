@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -43,10 +44,24 @@ export default async function LoginPage({
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-12">
-      <header className="flex flex-col gap-2">
-        <span className="inline-flex w-fit items-center rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground">
-          Dugtong OJT
-        </span>
+      <header className="flex flex-col gap-4">
+        <div>
+          <Image
+            src="/dugtong-ojt-logo.png"
+            alt="Dugtong OJT"
+            width={260}
+            height={70}
+            priority
+            className="dugtong-logo-light h-auto w-52"
+          />
+          <Image
+            src="/dugtong-ojt-logo-dark.png"
+            alt=""
+            width={260}
+            height={70}
+            className="dugtong-logo-dark h-auto w-52"
+          />
+        </div>
         <h1 className="text-3xl font-semibold tracking-tight">
           Track OJT hours without the paperwork.
         </h1>
