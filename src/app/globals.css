@@ -12,6 +12,10 @@
   --surface-hover: #EEF2F7;
   --card: #FFFFFF;
   --card-foreground: #0F172A;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
+  --accent: #EEF2F7;
+  --accent-foreground: #0F172A;
   
   --primary: #2563EB;
   --primary-hover: #1D4ED8;
@@ -64,6 +68,10 @@
     --surface-hover: #17233A;
     --card: #0D1526;
     --card-foreground: #F1F5F9;
+    --popover: #111A2E;
+    --popover-foreground: #F1F5F9;
+    --accent: #17233A;
+    --accent-foreground: #F1F5F9;
 
     --primary: #2563EB;
     --primary-hover: #1D4ED8;
@@ -113,6 +121,10 @@
   --color-surface-hover: var(--surface-hover);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
 
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
@@ -155,14 +167,33 @@
   --radius-card: var(--radius-card);
   --radius-pill: var(--radius-pill);
 
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-heading: var(--font-inter-tight), var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+@layer base {
+  h1, h2, h3 {
+    font-family: var(--font-heading);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* People who ask for less motion get none. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .dugtong-logo-dark {

@@ -1,27 +1,41 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 
 type ThemeToggleButtonProps = {
   className?: string;
 };
 
-export function ThemeToggleButton2({ className }: ThemeToggleButtonProps) {
-  const [isDark, setIsDark] = useState(
-    () => typeof window !== "undefined" && localStorage.getItem("theme") === "dark",
-  );
+// The theme lives on the page itself: a "dark" class on <html>. A small
+// script in the root layout sets it before the first paint from the saved
+// choice, so the page never flashes the wrong theme. This button just reads
+// that class and flips it.
+function subscribe(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+  return () => observer.disconnect();
+}
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDark);
-  }, [isDark]);
+const readTheme = () => document.documentElement.classList.contains("dark");
+// What the server renders (it cannot know the saved choice): light.
+const serverTheme = () => false;
+
+export function ThemeToggleButton2({ className }: ThemeToggleButtonProps) {
+  const isDark = useSyncExternalStore(subscribe, readTheme, serverTheme);
 
   function toggleTheme() {
     const dark = !isDark;
-    setIsDark(dark);
-    localStorage.setItem("theme", dark ? "dark" : "light");
     document.documentElement.classList.toggle("dark", dark);
+    try {
+      localStorage.setItem("theme", dark ? "dark" : "light");
+    } catch {
+      // Private browsing can refuse storage; the toggle still works this visit.
+    }
   }
 
   return (
@@ -31,11 +45,15 @@ export function ThemeToggleButton2({ className }: ThemeToggleButtonProps) {
       aria-label={isDark ? "Use light mode" : "Use dark mode"}
       aria-pressed={isDark}
       className={cn(
-        "inline-flex size-10 items-center justify-center rounded-[var(--radius)] border border-border bg-card text-foreground transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "inline-flex size-9 items-center justify-center rounded-[8px] border border-border bg-card text-foreground transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className,
       )}
     >
-      {isDark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
+      {isDark ? (
+        <Sun className="size-4" aria-hidden="true" />
+      ) : (
+        <Moon className="size-4" aria-hidden="true" />
+      )}
     </button>
   );
 }
