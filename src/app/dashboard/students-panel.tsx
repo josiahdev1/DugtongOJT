@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatHours } from "@/lib/time";
 
 export type StudentRow = {
@@ -60,33 +60,8 @@ export function StudentsPanel({ rows }: { rows: StudentRow[] }) {
     );
   });
 
-  return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-          <TabsList>
-            <TabsTrigger value="all">All ({counts.all})</TabsTrigger>
-            <TabsTrigger value="waiting">Waiting ({counts.waiting})</TabsTrigger>
-            <TabsTrigger value="completed">Completed ({counts.completed})</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <div className="relative w-full sm:w-64">
-          <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            placeholder="Search students"
-            aria-label="Search students"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="pl-8"
-          />
-        </div>
-      </div>
-
-      {shown.length === 0 ? (
+  const results = (
+shown.length === 0 ? (
         <p className="p-8 text-center text-sm text-muted-foreground">
           {EMPTY[tab]}
         </p>
@@ -153,7 +128,7 @@ export function StudentsPanel({ rows }: { rows: StudentRow[] }) {
                   <TableCell>
                     <Link
                       href={`/students/${r.id}`}
-                      className="font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
+                      className="font-medium text-foreground underline-offset-4 hover:text-primary-text hover:underline"
                     >
                       {r.name}
                     </Link>
@@ -205,7 +180,38 @@ export function StudentsPanel({ rows }: { rows: StudentRow[] }) {
         </Table>
           </div>
         </>
-      )}
-    </div>
+      )
+  );
+
+  return (
+    <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="gap-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
+        <TabsList>
+          <TabsTrigger value="all">All ({counts.all})</TabsTrigger>
+          <TabsTrigger value="waiting">Waiting ({counts.waiting})</TabsTrigger>
+          <TabsTrigger value="completed">Completed ({counts.completed})</TabsTrigger>
+        </TabsList>
+        <div className="relative w-full sm:w-64">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            placeholder="Search students"
+            aria-label="Search students"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+      </div>
+
+      {(["all", "waiting", "completed"] as Tab[]).map((v) => (
+        <TabsContent key={v} value={v} className="mt-0">
+          {results}
+        </TabsContent>
+      ))}
+    </Tabs>
   );
 }

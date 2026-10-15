@@ -11,6 +11,7 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { CATEGORY_LABEL, REPORT_STATUS_LABEL } from "@/lib/reports";
 import { decideReport } from "./actions";
+import { AppShell } from "@/components/app-shell/app-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -43,14 +44,15 @@ export default async function ReportsPage({
   const decided = (reports ?? []).filter((r) => r.status !== "submitted");
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8">
-      <Link
-        href="/dashboard"
-        className="w-fit text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
-      >
-        ← Dashboard
-      </Link>
-
+    <AppShell
+      role="coordinator"
+      active="reports"
+      title="Misuse reports"
+      description="What students reported about their placements. Your decision on each report is final."
+      crumbs={[{ label: "Dashboard", href: "/dashboard" }]}
+      user={user}
+      org={{ name: school.name, verified: school.verified }}
+    >
       {error && (
         <p role="alert" className="text-sm font-medium text-destructive">
           {error}
@@ -162,6 +164,6 @@ export default async function ReportsPage({
           )}
         </CardContent>
       </Card>
-    </main>
+    </AppShell>
   );
 }

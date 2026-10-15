@@ -23,6 +23,7 @@ import { UUID_RE } from "@/lib/ids";
 import { formatHours, hoursBetween, shortTime } from "@/lib/time";
 import { ChangeHistory } from "./change-history";
 import { decideEntry, issueCertificate } from "./actions";
+import { AppShell } from "@/components/app-shell/app-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -97,38 +98,23 @@ export default async function StudentDetailPage({
   const reachedRequired = approved >= student.required_hours;
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8">
-      <div>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center text-xs font-medium text-muted-foreground hover:text-foreground"
-        >
-          ← Back to Dashboard
-        </Link>
-      </div>
-
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-5">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-medium tracking-tight text-foreground">
-              {student.name}
-            </h1>
-            <Badge variant="verified">Student</Badge>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {student.course} · {company?.name ?? "No company"} ·{" "}
-            <span className="font-mono">{student.student_no}</span> ·{" "}
-            {student.email}
-          </p>
-        </div>
+    <AppShell
+      role="coordinator"
+      active="dashboard"
+      title={student.name}
+      description={`${student.course} · ${company?.name ?? "No company"} · ${student.student_no} · ${student.email}`}
+      crumbs={[{ label: "Dashboard", href: "/dashboard" }]}
+      user={user}
+      org={{ name: school.name, verified: school.verified }}
+      actions={
         <Link
           href={`/students/${id}/report`}
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           Generate report
         </Link>
-      </header>
-
+      }
+    >
       {error && (
         <div
           role="alert"
@@ -161,6 +147,7 @@ export default async function StudentDetailPage({
             </span>
           </p>
           <Progress
+            aria-label="Approved hours toward the requirement"
             value={approved}
             max={student.required_hours}
             className="h-2"
@@ -294,6 +281,6 @@ export default async function StudentDetailPage({
         dateOf={dateOf}
         userId={user.id}
       />
-    </main>
+    </AppShell>
   );
 }

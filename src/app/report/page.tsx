@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   Card,
@@ -15,6 +14,7 @@ import {
 } from "@/lib/reports";
 import { shiftDate, todayInManila } from "@/lib/time";
 import { ReportForm } from "./report-form";
+import { AppShell } from "@/components/app-shell/app-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -35,17 +35,17 @@ export default async function ReportPage() {
   const today = todayInManila();
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8">
-      <Link
-        href="/my-hours"
-        className="w-fit text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
-      >
-        ← My hours
-      </Link>
-
+    <AppShell
+      role="student"
+      active="report"
+      title="Report a problem"
+      description="Tell your school coordinator if the work is not what was agreed."
+      crumbs={[{ label: "My hours", href: "/my-hours" }]}
+      user={user}
+    >
       <Card>
         <CardHeader>
-          <CardTitle>Report a problem</CardTitle>
+          <CardTitle>What happened</CardTitle>
           <CardDescription>
             Were you asked to do work outside what was agreed, put in unsafe
             conditions, or made to work extra hours that were not recorded?
@@ -98,6 +98,6 @@ export default async function ReportPage() {
           )}
         </CardContent>
       </Card>
-    </main>
+    </AppShell>
   );
 }

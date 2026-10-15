@@ -191,3 +191,16 @@ Build on shadcn/ui primitives and apply the Dugtong tokens consistently.
 - [ ] Run existing lint, type-check, test, and production-build commands where available; fix regressions introduced by frontend changes.
 - [ ] Final handoff lists changed frontend files, checks run, and missing backend dependencies. Disclose any separately authorized backend changes.
 
+
+## 12. Implementation notes (October 2026)
+
+What the code now does, so the guide and the app stay in step.
+
+- **Fonts are loaded.** Inter (interface), Inter Tight (headings) and JetBrains Mono (IDs and hours) load through `next/font` in `src/app/layout.tsx`. Satoshi, the guide's first choice for headings, is not on Google Fonts, so headings use the guide's own fallback, Inter Tight. Heading tracking is -0.02em for h1 and h2 and -0.01em for h3, because the full value looks cramped on small card titles.
+- **One app shell.** `src/components/app-shell/` holds the frame for every signed-in screen: a role sidebar with a blue active indicator, a top bar with breadcrumbs, a theme toggle and an account menu, and a drawer for phones. The links for each role are in `nav.ts`. The printed pages (hours report, certificate) and the one-time setup screens have no shell on purpose.
+- **Public pages share a header.** The landing page, the sign-in page and the OJT openings board use `PublicHeader`.
+- **New shadcn components:** dropdown-menu, avatar, breadcrumb, separator, skeleton, tabs and sheet. They add one dependency, `radix-ui`, and import `cn` from `@/lib/utils`.
+- **Tokens added, no new colors:** `popover` and `accent` are mapped onto the existing palette. `primary-text` is the brand blue in light mode and the lighter tint (`#A5C7FF`) in dark mode. **Use `text-primary-text` for link and label text, never `text-primary`**, which is the button blue and fails contrast on dark backgrounds.
+- **Dark mode** is a `dark` class on `<html>`, set by a small inline script in `<head>` before the first paint, so nobody sees a white flash.
+- **Loading states:** `ShellSkeleton` mirrors the shell and is used by the dashboard, My hours, student, company, admin and supervisor screens.
+- **Checked:** axe-core (WCAG 2.1 A and AA) reports zero violations on every screen in light, dark and phone width, and the controls were exercised in a real browser.

@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authenticate } from "./actions";
 
-export function LoginForm() {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" | "signup" }) {
+  const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [state, formAction, pending] = useActionState(authenticate, undefined);
 
   return (
@@ -23,6 +23,12 @@ export function LoginForm() {
           autoComplete="email"
           required
         />
+        {mode === "signup" && (
+          <p className="text-xs text-muted-foreground">
+            Students and supervisors: use the email your school or coordinator
+            has on file, or you will not be matched.
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">

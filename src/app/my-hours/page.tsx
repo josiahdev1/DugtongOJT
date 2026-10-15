@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -27,9 +26,8 @@ import {
   shortTime,
   todayInManila,
 } from "@/lib/time";
-import { signOut } from "../login/actions";
 import { LogForm } from "./log-form";
-import { RoleShell } from "@/components/role-shell";
+import { AppShell } from "@/components/app-shell/app-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -68,29 +66,13 @@ export default async function MyHoursPage() {
   const today = todayInManila();
 
   return (
-    <RoleShell active="hours" role="Student" title="My OJT hours" subtitle={`${student.course} · ${company?.name ?? "No company"}`}>
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-6 pb-24 lg:px-8 lg:pb-8">
-      {/* Student Top Shell */}
-      <header className="sr-only">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-medium tracking-tight text-foreground">
-              {student.name}
-            </h1>
-            <Badge variant="verified">Student</Badge>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {student.course} · {company?.name ?? "No company"} ·{" "}
-            <span className="font-mono">{student.student_no}</span>
-          </p>
-        </div>
-        <form action={signOut}>
-          <Button type="submit" variant="ghost" size="sm">
-            Sign out
-          </Button>
-        </form>
-      </header>
-
+    <AppShell
+      role="student"
+      active="hours"
+      title="My hours"
+      description={`${student.course} · ${company?.name ?? "No company"} · ${student.student_no}`}
+      user={user}
+    >
       {/* Progress & Summary Card */}
       <Card>
         <CardHeader className="p-5 pb-3">
@@ -119,6 +101,7 @@ export default async function MyHoursPage() {
             )}
           </div>
           <Progress
+            aria-label="Approved hours toward your requirement"
             value={approvedHours}
             max={student.required_hours}
             className="h-2"
@@ -216,7 +199,6 @@ export default async function MyHoursPage() {
           )}
         </CardContent>
       </Card>
-    </main>
-    </RoleShell>
+    </AppShell>
   );
 }

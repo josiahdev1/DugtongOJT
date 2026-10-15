@@ -10,8 +10,8 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { CATEGORY_LABEL } from "@/lib/reports";
 import { formatHours, hoursBetween, shortTime } from "@/lib/time";
-import { signOut } from "../login/actions";
 import { decideAsSupervisor } from "./actions";
+import { AppShell } from "@/components/app-shell/app-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -67,24 +67,13 @@ export default async function SupervisorPage({
   const companyName = new Map((companies ?? []).map((c) => [c.id, c.name]));
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Supervisor
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {user.email} ·{" "}
-            {(companies ?? []).map((c) => c.name).join(", ") || "No company"}
-          </p>
-        </div>
-        <form action={signOut}>
-          <Button type="submit" variant="outline">
-            Sign out
-          </Button>
-        </form>
-      </header>
-
+    <AppShell
+      role="supervisor"
+      active="approvals"
+      title="Approvals"
+      description={`Hours your students logged at ${(companies ?? []).map((c) => c.name).join(", ") || "your company"}.`}
+      user={user}
+    >
       {error && (
         <p role="alert" className="text-sm font-medium text-destructive">
           {error}
@@ -244,6 +233,6 @@ export default async function SupervisorPage({
           </CardContent>
         )}
       </Card>
-    </main>
+    </AppShell>
   );
 }

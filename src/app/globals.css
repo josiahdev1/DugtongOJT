@@ -21,6 +21,7 @@
   --primary-hover: #1D4ED8;
   --primary-foreground: #FFFFFF;
   --primary-soft: #93B4F5;
+  --primary-text: #2563EB;
   
   --secondary: #F5F7FA;
   --secondary-foreground: #0F172A;
@@ -182,8 +183,11 @@ body {
   h1, h2, h3 {
     font-family: var(--font-heading);
     font-weight: 500;
-    letter-spacing: -0.02em;
   }
+  /* The spec asks for -0.02em. That suits big headings; on small card
+     titles it looks cramped, so h3 gets a lighter touch. */
+  h1, h2 { letter-spacing: -0.02em; }
+  h3 { letter-spacing: -0.01em; }
 }
 
 /* People who ask for less motion get none. */

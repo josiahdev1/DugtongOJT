@@ -9,19 +9,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { findStudent, getCurrentUser } from "@/lib/auth";
+import { Landing } from "@/components/landing/landing";
 import { signOut } from "./login/actions";
 
 export const dynamic = "force-dynamic";
 
 // The front door decides where each person goes:
-//   signed out            -> /login
+//   signed out            -> the landing page
 //   coordinator           -> /dashboard
 //   on a roster           -> /my-hours
 //   anyone else           -> "you are not on a roster"
 export default async function Home() {
   const { supabase, user, school } = await getCurrentUser();
 
-  if (!user) redirect("/login");
+  // Signed out: the landing page. Signed in: straight to your own screen.
+  if (!user) return <Landing />;
   if (school) redirect("/dashboard");
 
   // A supervisor was added to a company by a coordinator and matches by

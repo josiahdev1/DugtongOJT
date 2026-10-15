@@ -319,7 +319,7 @@ export default async function DashboardPage({
                     <p className="font-medium text-foreground">Add a partner company</p>
                     <p className="text-muted-foreground">
                       A company you already have a signed MOA with.{" "}
-                      <Link href="/companies" className="font-medium text-primary underline underline-offset-4">
+                      <Link href="/companies" className="font-medium text-primary-text underline underline-offset-4">
                         Add a company
                       </Link>
                     </p>
@@ -333,7 +333,7 @@ export default async function DashboardPage({
                     <p className="font-medium text-foreground">Upload your roster</p>
                     <p className="text-muted-foreground">
                       A CSV with each student&apos;s name, ID, course, email, company and required hours.{" "}
-                      <Link href="/roster/upload" className="font-medium text-primary underline underline-offset-4">
+                      <Link href="/roster/upload" className="font-medium text-primary-text underline underline-offset-4">
                         Upload a roster
                       </Link>
                     </p>
@@ -394,7 +394,7 @@ export default async function DashboardPage({
                           {entry ? (
                             <Link
                               href={`/students/${entry.studentId}`}
-                              className="font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
+                              className="font-medium text-foreground underline-offset-4 hover:text-primary-text hover:underline"
                             >
                               {name ?? "a student"}
                             </Link>
@@ -420,7 +420,7 @@ export default async function DashboardPage({
                 <CardTitle>Partner companies</CardTitle>
                 <Link
                   href="/companies"
-                  className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+                  className="text-xs font-medium text-primary-text underline-offset-4 hover:underline"
                 >
                   Manage
                 </Link>
@@ -430,7 +430,7 @@ export default async function DashboardPage({
               {companyList.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No companies yet.{" "}
-                  <Link href="/companies" className="font-medium text-primary underline underline-offset-4">
+                  <Link href="/companies" className="font-medium text-primary-text underline underline-offset-4">
                     Add your first one
                   </Link>
                   .

@@ -21,6 +21,7 @@ import { todayInManila } from "@/lib/time";
 import { CompanyForm } from "./company-form";
 import { MoaForm } from "./moa-form";
 import { SupervisorsPanel } from "./supervisors-panel";
+import { AppShell } from "@/components/app-shell/app-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -45,14 +46,15 @@ export default async function CompaniesPage() {
   const today = todayInManila();
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8">
-      <Link
-        href="/dashboard"
-        className="w-fit text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
-      >
-        ← Dashboard
-      </Link>
-
+    <AppShell
+      role="coordinator"
+      active="companies"
+      title="Companies"
+      description="Partner companies, their MOA dates, and who can approve hours for each."
+      crumbs={[{ label: "Dashboard", href: "/dashboard" }]}
+      user={user}
+      org={{ name: school.name, verified: school.verified }}
+    >
       <Card>
         <CardHeader>
           <CardTitle>Add a partner company</CardTitle>
@@ -143,6 +145,6 @@ export default async function CompaniesPage() {
           )}
         </CardContent>
       </Card>
-    </main>
+    </AppShell>
   );
 }

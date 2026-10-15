@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 
 // The three typefaces from docs/Design.md. Satoshi (the spec's first choice
@@ -29,6 +28,11 @@ export const metadata: Metadata = {
 
 // Runs before the page paints, so a person who chose dark mode never sees a
 // white flash. It only reads the saved choice and sets a class.
+//
+// This is a plain inline script on purpose: next/script queues its code until
+// Next's runtime loads, which is too late to stop the flash. It is written as
+// raw HTML, which is safe here because the text below is a fixed constant in
+// this file and no user input ever reaches it.
 const themeInit = `try{if(localStorage.getItem("theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -38,12 +42,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">
-        <Script id="theme-init" strategy="beforeInteractive">
-          {themeInit}
-        </Script>
-        {children}
-      </body>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+      </head>
+      <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }

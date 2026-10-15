@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
 import { UploadForm } from "./upload-form";
+import { AppShell } from "@/components/app-shell/app-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -23,17 +24,18 @@ export default async function UploadRosterPage() {
     .select("id", { count: "exact", head: true });
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8">
-      <Link
-        href="/dashboard"
-        className="w-fit text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
-      >
-        ← Dashboard
-      </Link>
-
+    <AppShell
+      role="coordinator"
+      active="roster"
+      title="Upload roster"
+      description="Add students from a CSV file. If any row is wrong, nothing is imported."
+      crumbs={[{ label: "Dashboard", href: "/dashboard" }]}
+      user={user}
+      org={{ name: school.name, verified: school.verified }}
+    >
       <Card>
         <CardHeader>
-          <CardTitle>Upload roster</CardTitle>
+          <CardTitle>Choose a CSV file</CardTitle>
           <CardDescription>
             Each student&apos;s company must already be on your Companies
             page. If one bad row is found, nothing is imported.
@@ -70,6 +72,6 @@ export default async function UploadRosterPage() {
           )}
         </CardContent>
       </Card>
-    </main>
+    </AppShell>
   );
 }
