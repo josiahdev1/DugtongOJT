@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MAX_CHARS } from "@/lib/roster";
+import { MAX_BYTES } from "@/lib/roster";
 import { importRoster, previewRoster, type PreviewState } from "./actions";
 import {
   Table,
@@ -16,29 +16,36 @@ import {
 } from "@/components/ui/table";
 
 export function UploadForm() {
-  const [text, setText] = useState("");
+  const [file, setFile] = useState<File>();
   const [preview, setPreview] = useState<PreviewState>();
   const [pending, startTransition] = useTransition();
 
-  async function onFile(file: File | undefined) {
+  // The file itself goes to the server, which reads and checks it.
+  function toFormData(f: File) {
+    const data = new FormData();
+    data.set("file", f);
+    return data;
+  }
+
+  function onFile(chosen: File | undefined) {
     setPreview(undefined);
-    setText("");
-    if (!file) return;
-    if (file.size > MAX_CHARS) {
+    setFile(undefined);
+    if (!chosen) return;
+    if (chosen.size > MAX_BYTES) {
       setPreview({ error: "That file is larger than 1 MB." });
       return;
     }
-    const content = await file.text();
-    setText(content);
+    setFile(chosen);
     startTransition(async () => {
-      setPreview(await previewRoster(content));
+      setPreview(await previewRoster(toFormData(chosen)));
     });
   }
 
   function onConfirm() {
+    if (!file) return;
     startTransition(async () => {
       // On success this redirects to the Dashboard.
-      const result = await importRoster(text);
+      const result = await importRoster(toFormData(file));
       if (result) setPreview(result);
     });
   }
@@ -49,16 +56,17 @@ export function UploadForm() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="file">CSV file</Label>
+        <Label htmlFor="file">Excel or CSV file</Label>
         <Input
           id="file"
           type="file"
-          accept=".csv,text/csv"
+          accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           onChange={(e) => onFile(e.target.files?.[0])}
         />
         <p className="text-xs text-muted-foreground">
-          Columns: name, student_id, course, email, company, required_hours.
-          Up to 500 students and 1 MB.
+          Columns: STUDENT ID, STUDENT NAME, COURSE, EMAIL, COMPANY, REQUIRED
+          HOURS (other columns are ignored). An Excel file can have several
+          tabs, one per section. Up to 500 students and 1 MB.
         </p>
       </div>
 
@@ -82,6 +90,7 @@ export function UploadForm() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {errors.some((e) => e.sheet) && <TableHead>Tab</TableHead>}
                   <TableHead>Row</TableHead>
                   <TableHead>Column</TableHead>
                   <TableHead>Problem</TableHead>
@@ -90,6 +99,9 @@ export function UploadForm() {
               <TableBody>
                 {errors.map((e, i) => (
                   <TableRow key={i}>
+                    {errors.some((x) => x.sheet) && (
+                      <TableCell>{e.sheet}</TableCell>
+                    )}
                     <TableCell className="tabular-nums">{e.row}</TableCell>
                     <TableCell className="font-mono text-xs">{e.column}</TableCell>
                     <TableCell>{e.reason}</TableCell>

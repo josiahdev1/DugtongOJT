@@ -28,14 +28,14 @@ export default async function UploadRosterPage() {
       role="coordinator"
       active="roster"
       title="Upload roster"
-      description="Add students from a CSV file. If any row is wrong, nothing is imported."
+      description="Add students from an Excel or CSV file. If any row is wrong, nothing is imported."
       crumbs={[{ label: "Dashboard", href: "/dashboard" }]}
       user={user}
       org={{ name: school.name, verified: school.verified }}
     >
       <Card>
         <CardHeader>
-          <CardTitle>Choose a CSV file</CardTitle>
+          <CardTitle>Choose an Excel or CSV file</CardTitle>
           <CardDescription>
             Each student&apos;s company must already be on your Companies
             page. If one bad row is found, nothing is imported.
@@ -55,6 +55,18 @@ export default async function UploadRosterPage() {
             </p>
           ) : (
             <>
+              <p className="text-sm text-muted-foreground">
+                Need the Excel template?{" "}
+                <a
+                  href="/roster-template.xlsx"
+                  download
+                  className="font-medium text-foreground underline underline-offset-4"
+                >
+                  Download the blank template
+                </a>
+                . Use one tab per section, and fill in company and required
+                hours for every student.
+              </p>
               <p className="text-sm text-muted-foreground">
                 Want to try it first?{" "}
                 <a

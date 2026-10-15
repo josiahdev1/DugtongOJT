@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Supabase CLI scratch folder
 supabase/.temp
+
+# Real student rosters (personal data) - never commit
+templates/*.xlsx
