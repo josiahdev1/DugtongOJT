@@ -6,8 +6,8 @@
 
 **Status:** todo
 
-- [ ] Supabase URL and publishable (anon) key are set in the local env file and in Vercel
-- [ ] No secret or service-role key appears anywhere in the project, and the local env file is not committed
-- [ ] The `schools` table is created from a numbered SQL file with RLS on and policies matching the spec (a coordinator reads and updates only their own school; any signed-in user may create one)
-- [ ] The live site reads from Supabase without errors
+- [x] Supabase URL and publishable (anon) key are set in the local env file and in Vercel
+- [x] No secret or service-role key appears anywhere in the project, and the local env file is not committed
+- [x] The `schools` table is created from a numbered SQL file with RLS on and policies matching the spec (a coordinator reads and updates only their own school; any signed-in user may create one)
+- [x] The live site reads from Supabase without errors
 - [ ] Works on the live URL

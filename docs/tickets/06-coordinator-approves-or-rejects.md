@@ -6,10 +6,10 @@
 
 **Status:** todo
 
-- [ ] The Dashboard shows a pending-approvals count and approved hours against required hours for each student
-- [ ] The Student detail page lists that student's entries with Approve and Reject buttons
-- [ ] Approving records who approved and when, and the approved total updates on the Dashboard and on the student's My hours page
-- [ ] Only that school's coordinator can change an entry's status; a student cannot approve their own hours
-- [ ] Once approved, a student cannot edit the entry
-- [ ] Any change to an entry after approval is recorded automatically by the database with who, when, and old and new values (the `time_entry_changes` table, readable by the coordinator, writable by nobody directly)
+- [x] The Dashboard shows a pending-approvals count and approved hours against required hours for each student
+- [x] The Student detail page lists that student's entries with Approve and Reject buttons
+- [x] Approving records who approved and when, and the approved total updates on the Dashboard and on the student's My hours page
+- [x] Only that school's coordinator can change an entry's status; a student cannot approve their own hours
+- [x] Once approved, a student cannot edit the entry
+- [x] Any change to an entry after approval is recorded automatically by the database with who, when, and old and new values (the `time_entry_changes` table, readable by the coordinator, writable by nobody directly)
 - [ ] Works on the live URL

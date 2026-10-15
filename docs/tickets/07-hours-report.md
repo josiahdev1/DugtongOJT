@@ -6,9 +6,9 @@
 
 **Status:** todo
 
-- [ ] A "Generate report" button on the Student detail page opens the report page
-- [ ] The report shows the student, company, daily approved entries, total approved hours and progress toward required hours
-- [ ] Only approved hours are counted
-- [ ] The page prints cleanly and saves as PDF using the browser's Save as PDF
-- [ ] Only that school's coordinator can open a student's report
+- [x] A "Generate report" button on the Student detail page opens the report page
+- [x] The report shows the student, company, daily approved entries, total approved hours and progress toward required hours
+- [x] Only approved hours are counted
+- [x] The page prints cleanly and saves as PDF using the browser's Save as PDF
+- [x] Only that school's coordinator can open a student's report
 - [ ] Works on the live URL
