@@ -1,157 +1,89 @@
 "use client";
 
-import { useState } from "react";
-import { Button, ListingCard, Modal } from "@/components/ui";
-import { Search, CheckCircle2, Briefcase } from "lucide-react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { Button, EmptyState, ListingCard, Modal } from "@/components/ui";
+import { APPLICATION_STATUS_LABEL } from "@/lib/applications";
+import { PARTNERSHIP_STATUS_LABEL } from "@/lib/partnerships";
+import { requestPartnership } from "../partnerships/actions";
+import { applyToListing } from "./actions";
+import { Search } from "lucide-react";
 
+// Only the fields of the `public_listings` view.
 export type ListingItem = {
   id: string;
+  employerId: string;
   title: string;
   companyName: string;
-  location: string;
-  workSetup: "On site" | "Hybrid" | "Remote";
+  city: string;
   isVerified: boolean;
-  requiredCourse: string;
-  targetHours: number;
-  slotsRemaining: number;
-  description?: string;
+  course: string;
+  requiredHours: number;
+  slots: number;
+  schedule: string;
+  hoursPerDay: number;
+  description: string;
 };
 
-const DEFAULT_LISTINGS: ListingItem[] = [
-  {
-    id: "l-1",
-    title: "Web Development Intern",
-    companyName: "Iloilo IT Solutions Inc.",
-    location: "Iloilo City",
-    workSetup: "Hybrid",
-    isVerified: true,
-    requiredCourse: "BSIT / BSCS",
-    targetHours: 486,
-    slotsRemaining: 3,
-    description: "Build client dashboards, develop RESTful API integrations, and participate in daily agile standups.",
-  },
-  {
-    id: "l-2",
-    title: "Quality Assurance & Testing Intern",
-    companyName: "Panay Care BPO",
-    location: "Mandurriao, Iloilo",
-    workSetup: "On site",
-    isVerified: true,
-    requiredCourse: "BSIT / BSIS",
-    targetHours: 400,
-    slotsRemaining: 4,
-    description: "Write automated Cypress test suites, execute regression test runs, and log Jira bug reports.",
-  },
-  {
-    id: "l-3",
-    title: "Digital Marketing & Content Intern",
-    companyName: "Visayas EduTech",
-    location: "Bacolod City",
-    workSetup: "Remote",
-    isVerified: true,
-    requiredCourse: "BSBA / Multimedia",
-    targetHours: 300,
-    slotsRemaining: 2,
-    description: "Create educational social collateral, optimize landing page SEO copy, and track lead conversion funnels.",
-  },
-  {
-    id: "l-4",
-    title: "IT Support & Network Operations",
-    companyName: "QuickServe Staffing",
-    location: "Iloilo City",
-    workSetup: "On site",
-    isVerified: true,
-    requiredCourse: "BSIT / BSCpE",
-    targetHours: 486,
-    slotsRemaining: 5,
-    description: "Configure office workstations, manage VLAN access switches, and provide Tier-1 helpdesk support.",
-  },
-  {
-    id: "l-5",
-    title: "Frontend UI/UX Engineering Intern",
-    companyName: "TechAdvance PH",
-    location: "Iloilo City",
-    workSetup: "Hybrid",
-    isVerified: true,
-    requiredCourse: "BSIT / BSCS",
-    targetHours: 240,
-    slotsRemaining: 2,
-    description: "Implement design system components using Tailwind CSS, Figma token handoffs, and Next.js App Router.",
-  },
-  {
-    id: "l-6",
-    title: "HR & Recruitment Coordinator Intern",
-    companyName: "Iloilo Digital Hub",
-    location: "Jaro, Iloilo",
-    workSetup: "On site",
-    isVerified: true,
-    requiredCourse: "BS Psychology / BSBA",
-    targetHours: 300,
-    slotsRemaining: 3,
-    description: "Screen intern applications, schedule interviews, and organize orientation onboarding packets.",
-  },
-];
+const SELECT_CLASS =
+  "rounded-[8px] border border-border bg-card px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export function ListingsClient({
-  initialListings = DEFAULT_LISTINGS,
+  listings,
+  courses,
+  role,
+  appliedTo,
+  partnershipWith,
+  error,
+  message,
 }: {
-  initialListings?: ListingItem[];
+  listings: ListingItem[];
+  courses: string[];
+  role: "visitor" | "student" | "coordinator" | "other";
+  appliedTo: Record<string, string>;
+  partnershipWith: Record<string, string>;
+  error?: string;
+  message?: string;
 }) {
   const [search, setSearch] = useState("");
   const [courseFilter, setCourseFilter] = useState("all");
-  const [setupFilter, setSetupFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
-
   const [activeListing, setActiveListing] = useState<ListingItem | null>(null);
-  const [applyModalOpen, setApplyModalOpen] = useState(false);
-  const [coverNote, setCoverNote] = useState("");
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const filtered = initialListings.filter((item) => {
-    const q = search.toLowerCase();
+  const cities = useMemo(
+    () => [...new Set(listings.map((l) => l.city))].sort((a, b) => a.localeCompare(b)),
+    [listings],
+  );
+
+  const q = search.trim().toLowerCase();
+  const filtered = listings.filter((item) => {
     const matchesSearch =
       !q ||
       item.title.toLowerCase().includes(q) ||
       item.companyName.toLowerCase().includes(q) ||
-      item.requiredCourse.toLowerCase().includes(q) ||
-      item.location.toLowerCase().includes(q);
-
-    const matchesCourse =
-      courseFilter === "all" ||
-      item.requiredCourse.toLowerCase().includes(courseFilter.toLowerCase());
-
-    const matchesSetup =
-      setupFilter === "all" || item.workSetup === setupFilter;
-
-    const matchesLocation =
-      locationFilter === "all" ||
-      item.location.toLowerCase().includes(locationFilter.toLowerCase());
-
-    return matchesSearch && matchesCourse && matchesSetup && matchesLocation;
+      item.course.toLowerCase().includes(q) ||
+      item.city.toLowerCase().includes(q) ||
+      item.description.toLowerCase().includes(q);
+    const matchesCourse = courseFilter === "all" || item.course === courseFilter;
+    const matchesLocation = locationFilter === "all" || item.city === locationFilter;
+    return matchesSearch && matchesCourse && matchesLocation;
   });
 
-  const handleOpenApply = (listing: ListingItem) => {
-    setActiveListing(listing);
-    setCoverNote("");
-    setApplyModalOpen(true);
-  };
-
-  const handleConfirmApply = () => {
-    if (!activeListing) return;
-    setApplyModalOpen(false);
-    setToastMessage(
-      `Application submitted for ${activeListing.title} at ${activeListing.companyName}!`
-    );
-    setTimeout(() => setToastMessage(null), 4000);
-  };
+  const isFiltering = Boolean(search || courseFilter !== "all" || locationFilter !== "all");
 
   return (
     <div className="flex flex-col">
-      {/* Toast */}
-      {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 rounded-[10px] border border-border border-l-4 border-l-primary bg-card p-3 shadow-lg text-sm text-foreground flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="size-4 text-primary" />
-          <span>{toastMessage}</span>
+      {/* Result of the last apply / partnership request (from the server action) */}
+      {(error || message) && (
+        <div
+          role={error ? "alert" : "status"}
+          className={
+            error
+              ? "mx-auto mt-4 w-[calc(100%-2rem)] max-w-[1200px] rounded-[8px] border border-destructive/30 bg-destructive-bg p-3 text-xs font-medium text-destructive-text"
+              : "mx-auto mt-4 w-[calc(100%-2rem)] max-w-[1200px] rounded-[8px] border border-border bg-surface p-3 text-xs font-medium text-foreground"
+          }
+        >
+          {error ?? message}
         </div>
       )}
 
@@ -192,55 +124,47 @@ export function ListingsClient({
             <select
               value={courseFilter}
               onChange={(e) => setCourseFilter(e.target.value)}
-              className="rounded-[8px] border border-border bg-card px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Filter by course"
+              className={SELECT_CLASS}
             >
               <option value="all">All courses</option>
-              <option value="BSIT">BSIT</option>
-              <option value="BSCS">BSCS</option>
-              <option value="BSBA">BSBA</option>
-              <option value="BSIS">BSIS</option>
-              <option value="Psychology">BS Psychology</option>
+              {courses.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
             </select>
 
             <select
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
-              className="rounded-[8px] border border-border bg-card px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Filter by location"
+              className={SELECT_CLASS}
             >
               <option value="all">All locations</option>
-              <option value="Iloilo">Iloilo City</option>
-              <option value="Mandurriao">Mandurriao</option>
-              <option value="Bacolod">Bacolod City</option>
-              <option value="Jaro">Jaro</option>
-            </select>
-
-            <select
-              value={setupFilter}
-              onChange={(e) => setSetupFilter(e.target.value)}
-              className="rounded-[8px] border border-border bg-card px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="all">Work setup</option>
-              <option value="On site">On site</option>
-              <option value="Hybrid">Hybrid</option>
-              <option value="Remote">Remote</option>
+              {cities.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
             </select>
           </div>
         </div>
       </section>
 
       {/* Listings Grid */}
-      <section className="mx-auto w-full max-w-[1200px] px-4 py-8 lg:px-8">
+      <section aria-label="Openings" className="mx-auto w-full max-w-[1200px] px-4 py-8 lg:px-8">
         <div className="mb-4 flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            Showing <strong className="text-foreground">{filtered.length}</strong> verified opening{filtered.length === 1 ? "" : "s"}
+          <span aria-live="polite">
+            Showing <strong className="text-foreground">{filtered.length}</strong> verified opening
+            {filtered.length === 1 ? "" : "s"}
           </span>
-          {(search || courseFilter !== "all" || setupFilter !== "all" || locationFilter !== "all") && (
+          {isFiltering && (
             <button
               type="button"
               onClick={() => {
                 setSearch("");
                 setCourseFilter("all");
-                setSetupFilter("all");
                 setLocationFilter("all");
               }}
               className="text-primary hover:underline font-medium"
@@ -251,39 +175,77 @@ export function ListingsClient({
         </div>
 
         {filtered.length === 0 ? (
-          <div className="rounded-[12px] border border-border bg-card p-12 text-center">
-            <Briefcase className="size-8 text-muted-foreground/50 mx-auto mb-3" />
-            <h3 className="text-base font-medium text-foreground">No openings match your search</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Try broadening your course or location filter.
-            </p>
+          <div className="rounded-[12px] border border-border bg-card">
+            <EmptyState
+              title={isFiltering ? "No openings match your search" : "No openings yet"}
+              description={
+                isFiltering
+                  ? "Try broadening your course or location filter."
+                  : "Verified companies post openings here. Check back soon."
+              }
+            />
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filtered.map((item) => (
-              <ListingCard
-                key={item.id}
-                id={item.id}
-                title={item.title}
-                companyName={item.companyName}
-                location={item.location}
-                workSetup={item.workSetup}
-                isVerified={item.isVerified}
-                requiredCourse={item.requiredCourse}
-                targetHours={item.targetHours}
-                slotsRemaining={item.slotsRemaining}
-                onApply={() => handleOpenApply(item)}
-              />
-            ))}
+            {filtered.map((item) => {
+              const partnership = partnershipWith[item.employerId];
+              const status = appliedTo[item.id];
+              return (
+                <div key={item.id} className="flex flex-col gap-2">
+                  <ListingCard
+                    id={item.id}
+                    title={item.title}
+                    companyName={item.companyName}
+                    location={item.city}
+                    // The database has no work-setup field, so none is shown.
+                    workSetup={"" as never}
+                    isVerified={item.isVerified}
+                    requiredCourse={item.course}
+                    targetHours={item.requiredHours}
+                    slotsRemaining={item.slots}
+                    applyHref={role === "visitor" ? "/login" : undefined}
+                    onApply={role === "student" ? () => setActiveListing(item) : undefined}
+                    className="flex-1"
+                  />
+                  {role === "student" && status && (
+                    <p className="px-1 text-xs text-muted-foreground">
+                      Your application:{" "}
+                      <span className="font-medium text-foreground">
+                        {APPLICATION_STATUS_LABEL[status] ?? status}
+                      </span>
+                    </p>
+                  )}
+                  {role === "coordinator" &&
+                    (partnership ? (
+                      <p className="px-1 text-xs text-muted-foreground">
+                        Partnership with {item.companyName}:{" "}
+                        <span className="font-medium text-foreground">
+                          {PARTNERSHIP_STATUS_LABEL[partnership] ?? partnership}
+                        </span>
+                      </p>
+                    ) : (
+                      <form action={requestPartnership}>
+                        <input type="hidden" name="employer_id" value={item.employerId} />
+                        <input type="hidden" name="return_to" value="listings" />
+                        <Button type="submit" size="sm" variant="outline">
+                          Ask {item.companyName} to partner with my school
+                        </Button>
+                      </form>
+                    ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
 
-      {/* Application Modal */}
-      {activeListing && (
+      {/* Application Modal (signed-in students only) */}
+      {activeListing && role === "student" && (
         <Modal
-          open={applyModalOpen}
-          onOpenChange={setApplyModalOpen}
+          open
+          onOpenChange={(open) => {
+            if (!open) setActiveListing(null);
+          }}
           title={`Apply for ${activeListing.title}`}
           description={`Submit your application to ${activeListing.companyName}.`}
         >
@@ -291,47 +253,88 @@ export function ListingsClient({
             <div className="rounded-[8px] bg-surface p-3 text-xs flex flex-col gap-1.5 border border-border">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Target Hours:</span>
-                <span className="font-mono font-medium text-foreground">{activeListing.targetHours} hrs</span>
+                <span className="font-mono font-medium text-foreground">
+                  {activeListing.requiredHours} hrs
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Required Course:</span>
-                <span className="font-medium text-foreground">{activeListing.requiredCourse}</span>
+                <span className="font-medium text-foreground">{activeListing.course}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Work Setup:</span>
-                <span className="font-medium text-foreground">{activeListing.workSetup} ({activeListing.location})</span>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Schedule:</span>
+                <span className="text-right font-medium text-foreground">
+                  {activeListing.schedule}, {activeListing.hoursPerDay} hours a day (
+                  {activeListing.city})
+                </span>
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                Note to coordinator & supervisor (optional)
-              </label>
-              <textarea
-                value={coverNote}
-                onChange={(e) => setCoverNote(e.target.value)}
-                placeholder="Briefly state your relevant subjects, technical interests, or schedule availability"
-                rows={3}
-                className="w-full rounded-[8px] border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
-              />
-            </div>
+            {activeListing.description && (
+              <div>
+                <h4 className="mb-1 text-xs font-medium text-muted-foreground">
+                  What students will do
+                </h4>
+                <p className="max-h-32 overflow-y-auto whitespace-pre-wrap text-sm leading-6 text-foreground">
+                  {activeListing.description}
+                </p>
+              </div>
+            )}
 
-            <div className="flex items-center justify-end gap-2 mt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setApplyModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleConfirmApply}
-              >
-                Submit application
-              </Button>
-            </div>
+            {appliedTo[activeListing.id] ? (
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm text-muted-foreground">
+                  Your application:{" "}
+                  <span className="font-medium text-foreground">
+                    {APPLICATION_STATUS_LABEL[appliedTo[activeListing.id]] ??
+                      appliedTo[activeListing.id]}
+                  </span>
+                </p>
+                <Link
+                  href="/my-applications"
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  My applications
+                </Link>
+              </div>
+            ) : (
+              <form action={applyToListing} className="flex flex-col gap-4">
+                <input type="hidden" name="listing_id" value={activeListing.id} />
+                <div>
+                  <label
+                    htmlFor="apply-note"
+                    className="block text-xs font-medium text-muted-foreground mb-1.5"
+                  >
+                    A short note to {activeListing.companyName} (optional)
+                  </label>
+                  <textarea
+                    id="apply-note"
+                    name="note"
+                    maxLength={1000}
+                    placeholder="Why this opening, and what you can do."
+                    rows={3}
+                    className="w-full rounded-[8px] border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    The company sees your name, student ID, course and school. If they accept,
+                    your coordinator places you; you are not placed automatically.
+                  </p>
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setActiveListing(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary" size="sm">
+                    Send application
+                  </Button>
+                </div>
+              </form>
+            )}
           </div>
         </Modal>
       )}

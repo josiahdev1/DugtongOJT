@@ -102,7 +102,7 @@ function CustomEscalationTooltip({
       <div className="rounded-lg border border-border bg-card p-2 text-xs shadow-md">
         <p className="font-medium text-foreground">{label}</p>
         <p className="mt-0.5 font-semibold text-amber-500">
-          {payload[0].value} open escalations
+          {payload[0].value} raised
         </p>
       </div>
     );
@@ -188,14 +188,14 @@ export function AdminVerificationsChart({ data }: { data: WeeklyThroughput[] }) 
       <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
         <div>
           <CardTitle className="text-[14px] font-semibold text-foreground">
-            Verification throughput
+            Partner sign-ups
           </CardTitle>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Schools and companies verified per week (8 weeks)
+            New school and company sign-ups per week (8 weeks)
           </p>
         </div>
         <span className="text-[11px] font-medium font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-          {totalVerified} verified
+          {totalVerified} sign-ups
         </span>
       </CardHeader>
       <CardContent className="p-4 pt-1">
@@ -211,7 +211,7 @@ export function AdminVerificationsChart({ data }: { data: WeeklyThroughput[] }) 
           </div>
         </div>
 
-        <div className="h-[155px] w-full" aria-label="Bar chart showing weekly verification throughput">
+        <div className="h-[155px] w-full" aria-label="Bar chart showing weekly school and company sign-ups">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 4, right: 8, left: -24, bottom: 0 }}>
               <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
@@ -232,14 +232,14 @@ export function AdminVerificationsChart({ data }: { data: WeeklyThroughput[] }) 
               <Tooltip content={<CustomVerificationsTooltip />} />
               <Bar
                 dataKey="schools"
-                name="Schools verified"
+                name="Schools signed up"
                 fill="var(--primary)"
                 radius={[3, 3, 0, 0]}
                 isAnimationActive={false}
               />
               <Bar
                 dataKey="companies"
-                name="Companies verified"
+                name="Companies signed up"
                 fill="#0EA5A5"
                 radius={[3, 3, 0, 0]}
                 isAnimationActive={false}
@@ -249,7 +249,7 @@ export function AdminVerificationsChart({ data }: { data: WeeklyThroughput[] }) 
         </div>
 
         <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-[11px] text-muted-foreground">
-          <span>Weekly pace: <strong className="font-medium text-foreground">{(totalVerified / 8).toFixed(1)} / wk</strong></span>
+          <span>Average: <strong className="font-medium text-foreground">{(totalVerified / 8).toFixed(1)} / wk</strong></span>
           <span>Window: <strong className="font-medium text-foreground">8 weeks</strong></span>
         </div>
       </CardContent>
@@ -268,17 +268,6 @@ export function AdminEscalationSparkline({
   data: WeeklyEscalation[];
   currentCount: number;
 }) {
-  const previousWeeksCount = data.slice(0, -1).reduce((sum, d) => sum + d.count, 0);
-  const avgPast = data.length > 1 ? previousWeeksCount / (data.length - 1) : 0;
-  const recent = data[data.length - 1]?.count ?? 0;
-
-  const trendDirection =
-    recent > avgPast
-      ? "trending upward"
-      : recent < avgPast
-        ? "trending downward"
-        : "stable";
-
   return (
     <div className="flex flex-col gap-1" aria-label="Escalation trend sparkline">
       <div className="h-[54px] w-full">
@@ -302,9 +291,7 @@ export function AdminEscalationSparkline({
         <span className="tabular-nums font-medium text-foreground">
           {currentCount} {currentCount === 1 ? "active issue" : "active issues"}
         </span>
-        <span className="font-medium capitalize text-amber-500">
-          {trendDirection}
-        </span>
+        <span>Last 12 weeks</span>
       </div>
     </div>
   );

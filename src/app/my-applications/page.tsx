@@ -1,5 +1,9 @@
-import { getCurrentUser } from "@/lib/auth";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell/app-shell";
+import { buttonVariants } from "@/components/ui/button";
+import { MAX_WAITING_APPLICATIONS, type MyApplication } from "@/lib/applications";
+import { findStudent, getCurrentUser } from "@/lib/auth";
 import { ApplicationClient } from "./application-client";
 
 export const dynamic = "force-dynamic";
@@ -10,17 +14,34 @@ export default async function MyApplicationsPage({
   searchParams: Promise<{ error?: string; message?: string }>;
 }) {
   const { error, message } = await searchParams;
-  const { user } = await getCurrentUser();
 
-  const currentUser = user ?? { email: "maria.santos@wvsu.edu.ph" };
+  const { user, school, supabase } = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (school) redirect("/dashboard");
+
+  const student = await findStudent(supabase);
+  if (!student) redirect("/");
+
+  // Row Level Security returns only this student's own applications.
+  const { data } = await supabase
+    .from("applications")
+    .select("id, listing_id, listing_title, company_name, note, status, created_at")
+    .order("created_at", { ascending: false });
+  const applications = (data ?? []) as MyApplication[];
+  const waiting = applications.filter((a) => a.status === "sent").length;
 
   return (
     <AppShell
       role="student"
       active="applications"
-      title="My application"
-      description="Track the status of your internship application, MOA execution, and requirement submission."
-      user={currentUser}
+      title="My applications"
+      description={`${waiting} of ${MAX_WAITING_APPLICATIONS} waiting. A company answers each one; your coordinator places you if it is accepted.`}
+      user={user}
+      actions={
+        <Link href="/listings" className={buttonVariants({ size: "sm" })}>
+          Browse openings
+        </Link>
+      }
     >
       {error && (
         <div
@@ -39,7 +60,7 @@ export default async function MyApplicationsPage({
         </div>
       )}
 
-      <ApplicationClient />
+      <ApplicationClient applications={applications} />
     </AppShell>
   );
 }

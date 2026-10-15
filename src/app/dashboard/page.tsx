@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { KpiCard } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import {
+  MOA_WARNING_DAYS,
   describeMoa,
   moaStatus,
   needsAttention,
@@ -16,16 +18,6 @@ import { AlertCircle, Building2, Upload, Briefcase } from "lucide-react";
 
 export const metadata = { title: "Coordinator Dashboard — Dugtong OJT" };
 export const dynamic = "force-dynamic";
-
-type TimeEntryChange = {
-  id: string;
-  changed_at: string;
-  entry_id: string;
-  changed_by: string;
-  actor_role: string;
-  old_values: Record<string, unknown> | null;
-  new_values: Record<string, unknown> | null;
-};
 
 const ROLE_WORD: Record<string, string> = {
   coordinator: "Coordinator",
@@ -51,182 +43,153 @@ function when(iso: string) {
   });
 }
 
-const SEED_STUDENTS: StudentRow[] = [
-  { id: "s1", name: "Maria Santos", studentNo: "2023-01042", course: "BSIT", company: "Iloilo IT Solutions Inc.", approved: 320, required: 486, pending: 2 },
-  { id: "s2", name: "Kristine Lopez", studentNo: "2023-01167", course: "BSIT", company: "Iloilo IT Solutions Inc.", approved: 380, required: 486, pending: 1 },
-  { id: "s3", name: "Paolo Reyes", studentNo: "2023-01089", course: "BSCS", company: "Panay Care BPO", approved: 53, required: 240, pending: 1 },
-  { id: "s4", name: "Alyssa Villanueva", studentNo: "2023-01204", course: "BSBA", company: "Visayas EduTech", approved: 290, required: 300, pending: 0 },
-  { id: "s5", name: "Gabriel Tan", studentNo: "2023-01315", course: "BSIT", company: "QuickServe Staffing", approved: 486, required: 486, pending: 0 },
-];
-
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ imported?: string }>;
 }) {
   const { imported } = await searchParams;
-  const { user, school: realSchool, supabase } = await getCurrentUser();
+  const { user, school, supabase } = await getCurrentUser();
 
-  const school = realSchool ?? {
-    id: "wvsu-main",
-    name: "West Visayas State University",
-    verified: true,
-  };
-  const currentUser = user ?? { email: "coordinator@wvsu.edu.ph" };
+  if (!user) redirect("/login");
+  if (!school) redirect("/"); // not a coordinator
 
-  let rows: StudentRow[] = [];
-  let companyList: { id: string; name: string; moa_expires_on: string | null }[] = [];
-  let changes: TimeEntryChange[] = [];
-  let partnershipRequests = 2;
-  let reportsWaiting = 1;
-  let journalWaiting = 3;
+  const [
+    students,
+    { data: companies },
+    totals,
+    { count: reportsWaiting },
+    { count: journalWaiting },
+    { data: changes },
+    { data: partnershipData },
+  ] = await Promise.all([
+    // Every student, however many: Supabase caps one request at 1000 rows.
+    fetchAll((from, to) =>
+      supabase
+        .from("students")
+        .select("id, name, student_no, course, company_id, required_hours")
+        .order("name")
+        .order("id")
+        .range(from, to),
+    ),
+    supabase.from("companies").select("id, name, moa_expires_on").order("name"),
+    // Approved hours and pending counts, added up by the database.
+    fetchAll((from, to) =>
+      supabase
+        .from("student_hours")
+        .select("student_id, approved_hours, pending_count")
+        .order("student_id")
+        .range(from, to),
+    ),
+    // Misuse reports still waiting for this coordinator's decision.
+    supabase
+      .from("reports")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "submitted"),
+    // Journal entries waiting for this coordinator's decision.
+    supabase
+      .from("journal_entries")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "submitted"),
+    // The latest decisions on anyone's hours at this school.
+    supabase
+      .from("time_entry_changes")
+      .select("id, changed_at, entry_id, changed_by, actor_role, old_values, new_values")
+      .order("changed_at", { ascending: false })
+      .limit(8),
+    supabase.rpc("school_partnerships"),
+  ]);
 
-  if (supabase && user && realSchool) {
-    try {
-      const [
-        students,
-        companies,
-        totals,
-        { count: rw },
-        { count: jw },
-        { data: ch },
-        { data: partnershipData },
-      ] = await Promise.all([
-        fetchAll((from, to) =>
-          supabase
-            .from("students")
-            .select("id, name, student_no, course, company_id, required_hours")
-            .eq("school_id", school.id)
-            .order("name", { ascending: true })
-            .range(from, to),
-        ),
-        fetchAll((from, to) =>
-          supabase
-            .from("companies")
-            .select("id, name, moa_expires_on")
-            .eq("school_id", school.id)
-            .order("name", { ascending: true })
-            .range(from, to),
-        ),
-        fetchAll((from, to) =>
-          supabase.rpc("student_hours_totals").range(from, to),
-        ),
-        supabase
-          .from("reports")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "open"),
-        supabase
-          .from("journal_entries")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "submitted"),
-        supabase
-          .from("time_entry_changes")
-          .select("id, changed_at, entry_id, changed_by, actor_role, old_values, new_values")
-          .order("changed_at", { ascending: false })
-          .limit(8),
-        supabase.rpc("school_partnerships"),
-      ]);
+  // Names for the activity feed: change -> entry -> student.
+  const changeList = changes ?? [];
+  const changedEntryIds = changeList.map((c) => c.entry_id);
+  const { data: changedEntries } =
+    changedEntryIds.length === 0
+      ? { data: [] }
+      : await supabase
+          .from("time_entries")
+          .select("id, student_id, work_date")
+          .in("id", changedEntryIds);
 
-      if (students && students.length > 0) {
-        const studentList = students as {
-          id: string;
-          name: string;
-          student_no: string;
-          course: string;
-          company_id: string | null;
-          required_hours: number;
-        }[];
-        const compList = (companies ?? []) as { id: string; name: string }[];
-        const companyName = new Map(compList.map((c) => [c.id, c.name]));
-        const hourTotals = (totals ?? []) as {
-          student_id: string;
-          approved_hours: number | string;
-          pending_count: number | string;
-        }[];
-        const hoursOf = new Map(
-          hourTotals.map((t) => [
-            t.student_id,
-            { approved: Number(t.approved_hours), pending: Number(t.pending_count) },
-          ]),
-        );
+  const studentList = students ?? [];
+  const companyList = companies ?? [];
+  const companyName = new Map(companyList.map((c) => [c.id, c.name]));
+  const hoursOf = new Map(
+    (totals ?? []).map((t) => [
+      t.student_id,
+      { approved: Number(t.approved_hours), pending: Number(t.pending_count) },
+    ]),
+  );
 
-        rows = studentList.map((s) => ({
-          id: s.id,
-          name: s.name,
-          studentNo: s.student_no,
-          course: s.course,
-          company: companyName.get(s.company_id ?? "") ?? "—",
-          approved: hoursOf.get(s.id)?.approved ?? 0,
-          required: s.required_hours,
-          pending: hoursOf.get(s.id)?.pending ?? 0,
-        }));
-      }
+  const rows: StudentRow[] = studentList.map((s) => ({
+    id: s.id,
+    name: s.name,
+    studentNo: s.student_no,
+    course: s.course,
+    company: companyName.get(s.company_id) ?? "—",
+    approved: hoursOf.get(s.id)?.approved ?? 0,
+    required: s.required_hours,
+    pending: hoursOf.get(s.id)?.pending ?? 0,
+  }));
 
-      if (companies) companyList = companies as { id: string; name: string; moa_expires_on: string | null }[];
-      if (ch) changes = ch as TimeEntryChange[];
-      if (rw !== null) reportsWaiting = rw;
-      if (jw !== null) journalWaiting = jw;
-      if (partnershipData) {
-        partnershipRequests = (
-          (partnershipData ?? []) as { status: string; requested_by: string | null }[]
-        ).filter(
-          (p) => p.status === "requested" && p.requested_by === "company",
-        ).length;
-      }
-    } catch {
-      // Fallback to demonstration state
-    }
+  const totalPending = rows.reduce((sum, r) => sum + r.pending, 0);
+  const studentsWaiting = rows.filter((r) => r.pending > 0).length;
+  const totalApproved = rows.reduce((sum, r) => sum + r.approved, 0);
+  const totalRequired = rows.reduce((sum, r) => sum + r.required, 0);
+  const completed = rows.filter((r) => r.approved >= r.required).length;
+  const percentApproved =
+    totalRequired > 0 ? Math.min(100, Math.round((totalApproved / totalRequired) * 100)) : 0;
+
+  const partnershipRequests = (
+    (partnershipData ?? []) as { status: string; requested_by: string | null }[]
+  ).filter((p) => p.status === "requested" && p.requested_by === "employer").length;
+
+  const studentOfEntry = new Map(
+    (changedEntries ?? []).map((e) => [e.id, { studentId: e.student_id, date: e.work_date }]),
+  );
+  const nameOfStudent = new Map(studentList.map((s) => [s.id, s.name]));
+  const studentCount = new Map<string, number>();
+  for (const s of studentList) {
+    studentCount.set(s.company_id, (studentCount.get(s.company_id) ?? 0) + 1);
   }
 
-  // If database is unseeded, populate active demonstration rows
-  const displayRows = rows.length > 0 ? rows : SEED_STUDENTS;
-  const displayCompanies = companyList.length > 0 ? companyList : [
-    { id: "c1", name: "Iloilo IT Solutions Inc.", moa_expires_on: "2027-06-30" },
-    { id: "c2", name: "Panay Care BPO", moa_expires_on: "2026-11-15" },
-    { id: "c3", name: "Visayas EduTech", moa_expires_on: "2027-02-28" },
-    { id: "c4", name: "QuickServe Staffing", moa_expires_on: "2026-10-31" },
-  ];
-
-  const totalPending = displayRows.reduce((sum, r) => sum + r.pending, 0);
-  const studentsWaiting = displayRows.filter((r) => r.pending > 0).length;
-  const totalApproved = displayRows.reduce((sum, r) => sum + r.approved, 0);
-  const totalRequired = displayRows.reduce((sum, r) => sum + r.required, 0);
-  const completed = displayRows.filter((r) => r.approved >= r.required).length;
-  const percentApproved =
-    totalRequired > 0 ? Math.min(100, Math.round((totalApproved / totalRequired) * 100)) : 74;
-
   const today = todayInManila();
-  const moaAlerts = displayCompanies.filter((c) =>
+  const moaAlerts = companyList.filter((c) =>
     needsAttention(moaStatus(c.moa_expires_on, today)),
   ).length;
 
   const attention: { text: string; href?: string; link?: string }[] = [];
-  if (reportsWaiting > 0) {
+  if (!school.verified) {
     attention.push({
-      text: `${reportsWaiting} incident report waiting for review`,
-      href: "/reports",
-      link: "Review report",
+      text: "Your school is waiting for verification. You can add companies and upload your roster now, but students cannot sign in until the Dugtong team verifies it.",
     });
   }
-  if (journalWaiting > 0) {
+  if (reportsWaiting) {
     attention.push({
-      text: `${journalWaiting} journal entries awaiting approval`,
+      text: `${reportsWaiting} misuse ${reportsWaiting === 1 ? "report is" : "reports are"} waiting for your decision.`,
+      href: "/reports",
+      link: "Open reports",
+    });
+  }
+  if (journalWaiting) {
+    attention.push({
+      text: `${journalWaiting} journal ${journalWaiting === 1 ? "entry is" : "entries are"} waiting for your decision.`,
       href: "/journal",
-      link: "Approve journals",
+      link: "Open journals",
     });
   }
   if (partnershipRequests > 0) {
     attention.push({
-      text: `${partnershipRequests} companies requested school partnership`,
+      text: `${partnershipRequests} ${partnershipRequests === 1 ? "company wants" : "companies want"} to partner with your school.`,
       href: "/partnerships",
       link: "Review requests",
     });
   }
   if (moaAlerts > 0) {
     attention.push({
-      text: `${moaAlerts} MOA expiring or requires renewal review`,
+      text: `${moaAlerts} ${moaAlerts === 1 ? "MOA is" : "MOAs are"} expired or expiring within ${MOA_WARNING_DAYS} days.`,
       href: "/companies",
-      link: "Review MOAs",
+      link: "Review companies",
     });
   }
 
@@ -236,12 +199,12 @@ export default async function DashboardPage({
       active="dashboard"
       title="Coordinator dashboard"
       description={`Student deployment, OJT hour progress and partner management for ${school.name}.`}
-      user={currentUser}
+      user={user}
       org={{ name: school.name, verified: school.verified }}
       counts={{
-        reports: reportsWaiting,
+        reports: reportsWaiting ?? 0,
         partnerships: partnershipRequests,
-        journal: journalWaiting,
+        journal: journalWaiting ?? 0,
       }}
       wide
       actions={
@@ -278,22 +241,26 @@ export default async function DashboardPage({
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard
               label="Enrolled students"
-              value={displayRows.length}
-              subtext={`at ${displayCompanies.length} partner companies`}
+              value={rows.length}
+              subtext={`at ${companyList.length} partner ${companyList.length === 1 ? "company" : "companies"}`}
             />
             <KpiCard
               label="Waiting for approval"
               value={totalPending}
-              trend={{ direction: "down", label: `${studentsWaiting} students waiting` }}
+              subtext={
+                totalPending === 0
+                  ? "Nothing to decide right now"
+                  : `entries from ${studentsWaiting} ${studentsWaiting === 1 ? "student" : "students"}`
+              }
             />
             <KpiCard
               label="Approved hours"
               value={formatHours(totalApproved)}
-              trend={{ direction: "up", label: `${percentApproved}% completed` }}
+              subtext={`${percentApproved}% of ${formatHours(totalRequired)} required`}
             />
             <KpiCard
               label="Completed OJT"
-              value={`${completed} / ${displayRows.length}`}
+              value={`${completed} / ${rows.length}`}
               subtext="reached required hours"
             />
           </div>
@@ -310,10 +277,28 @@ export default async function DashboardPage({
                 </p>
               </div>
               <span className="text-xs font-mono font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">
-                {displayRows.length} students
+                {rows.length} {rows.length === 1 ? "student" : "students"}
               </span>
             </div>
-            <StudentsPanel rows={displayRows} />
+            {rows.length > 0 ? (
+              <StudentsPanel rows={rows} />
+            ) : (
+              <div className="p-6 text-center text-sm">
+                <p className="font-medium text-foreground">Your roster is empty</p>
+                <p className="mt-1 text-muted-foreground">
+                  Upload a CSV with each student&apos;s name, ID, course, email, company and
+                  required hours. Their hours appear here once they start logging.
+                </p>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  <Link href="/roster/upload" className={buttonVariants({ variant: "primary", size: "sm" })}>
+                    Upload your roster
+                  </Link>
+                  <Link href="/companies" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                    {companyList.length > 0 ? "Manage companies" : "Add a company first"}
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Operational Subgrid (2-column): Partner Companies & Recent Decisions */}
@@ -332,9 +317,19 @@ export default async function DashboardPage({
                 </Link>
               </div>
 
+              {companyList.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No companies yet.{" "}
+                  <Link href="/companies" className="font-medium text-primary hover:underline">
+                    Add your first one
+                  </Link>
+                  .
+                </p>
+              ) : (
               <div className="divide-y divide-border text-[13px]">
-                {displayCompanies.map((c) => {
+                {companyList.slice(0, 6).map((c) => {
                   const status = moaStatus(c.moa_expires_on, today);
+                  const n = studentCount.get(c.id) ?? 0;
                   return (
                     <div
                       key={c.id}
@@ -345,7 +340,7 @@ export default async function DashboardPage({
                           {c.name}
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          MOA: {c.moa_expires_on ? shiftDay(c.moa_expires_on) : "Active"}
+                          {n} {n === 1 ? "student" : "students"}
                         </div>
                       </div>
                       <Badge
@@ -354,7 +349,9 @@ export default async function DashboardPage({
                             ? "rejected"
                             : status.kind === "expiring"
                             ? "pending"
-                            : "approved"
+                            : status.kind === "valid"
+                            ? "approved"
+                            : "secondary"
                         }
                       >
                         {describeMoa(status)}
@@ -363,6 +360,7 @@ export default async function DashboardPage({
                   );
                 })}
               </div>
+              )}
             </div>
 
             {/* Decision Activity Feed Card */}
@@ -371,52 +369,50 @@ export default async function DashboardPage({
                 Recent decisions
               </h3>
               <div className="divide-y divide-border text-[13px]">
-                {changes.length === 0 ? (
-                  <>
-                    <div className="py-2.5 first:pt-0">
-                      <div className="font-medium text-foreground">
-                        Coordinator approved 8.0 hrs
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        Maria Santos · Oct 13 shift · Today, 3:14 PM
-                      </div>
-                    </div>
-                    <div className="py-2.5">
-                      <div className="font-medium text-foreground">
-                        Supervisor approved 8.0 hrs
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        Kristine Lopez · Oct 13 shift · Today, 2:40 PM
-                      </div>
-                    </div>
-                    <div className="py-2.5">
-                      <div className="font-medium text-foreground">
-                        Coordinator validated 6.0 hrs
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        Paolo Reyes · Oct 12 shift · Yesterday
-                      </div>
-                    </div>
-                    <div className="py-2.5 last:pb-0">
-                      <div className="font-medium text-foreground">
-                        Supervisor requested resubmission
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        Gabriel Tan · Oct 11 shift · 2 days ago
-                      </div>
-                    </div>
-                  </>
+                {changeList.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Nothing yet. Approvals and rejections show up here.
+                  </p>
                 ) : (
-                  changes.slice(0, 4).map((c) => (
-                    <div key={c.id} className="py-2.5 first:pt-0 last:pb-0">
-                      <div className="font-medium text-foreground">
-                        {ROLE_WORD[c.actor_role] ?? "Coordinator"} updated status
+                  changeList.slice(0, 6).map((c) => {
+                    const entry = studentOfEntry.get(c.entry_id);
+                    const name = entry ? nameOfStudent.get(entry.studentId) : undefined;
+                    const newStatus = (c.new_values as { status?: string } | null)?.status;
+                    const oldStatus = (c.old_values as { status?: string } | null)?.status;
+                    const verb =
+                      newStatus === "approved"
+                        ? "approved"
+                        : newStatus === "rejected"
+                          ? "rejected"
+                          : oldStatus === "rejected"
+                            ? "resubmitted"
+                            : "updated";
+                    const actor =
+                      c.changed_by === user.id
+                        ? "You"
+                        : (ROLE_WORD[c.actor_role ?? ""] ?? "Someone");
+                    return (
+                      <div key={c.id} className="py-2.5 first:pt-0 last:pb-0">
+                        <div className="font-medium text-foreground">
+                          {actor} {verb}{" "}
+                          {entry ? (
+                            <Link
+                              href={`/students/${entry.studentId}`}
+                              className="hover:text-primary hover:underline"
+                            >
+                              {name ?? "a student"}
+                            </Link>
+                          ) : (
+                            "an entry"
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {entry && <>{shiftDay(entry.date)} shift · </>}
+                          {when(c.changed_at)}
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {when(c.changed_at)}
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>

@@ -70,7 +70,7 @@ export default async function EvaluatePage({
   return (
     <AppShell
       role="supervisor"
-      active="approvals"
+      active="evaluations"
       title={`Evaluate ${student.name}`}
       description={`${student.course} · ${company?.name ?? "—"} · ${student.student_no}`}
       crumbs={[{ label: "Approvals", href: "/supervisor" }]}

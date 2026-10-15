@@ -1,532 +1,600 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
   Button,
+  EmptyState,
   KpiCard,
   Pill,
   ProgressBar,
-  RatingSegment,
+  buttonVariants,
 } from "@/components/ui";
-import { Check } from "lucide-react";
+import type { JournalEntry } from "@/lib/journal";
+import { JOURNAL_STATUS_LABEL } from "@/lib/journal";
+import { APPEAL_STATUS_LABEL, CATEGORY_LABEL } from "@/lib/reports";
+import { formatHours, hoursBetween, shortTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { appealReport, decideAsSupervisor } from "./actions";
 
-type JournalRow = {
+export type StudentRow = {
   id: string;
-  intern: string;
-  date: string;
-  hours: number;
-  summary: string;
-  status: "pending" | "approved" | "rejected";
-  timeCategory: "today" | "late";
+  name: string;
+  student_no: string;
+  course: string;
+  required_hours: number;
+  company_id: string;
+  approved_hours: number;
+  pending_count: number;
 };
 
-const INITIAL_JOURNALS: JournalRow[] = [
-  {
-    id: "j-1",
-    intern: "Maria Santos",
-    date: "Oct 13",
-    hours: 8,
-    summary: "Wired the attendance table filters",
-    status: "pending",
-    timeCategory: "today",
-  },
-  {
-    id: "j-2",
-    intern: "Kristine Lopez",
-    date: "Oct 13",
-    hours: 8,
-    summary: "Wrote unit tests for the login form",
-    status: "pending",
-    timeCategory: "today",
-  },
-  {
-    id: "j-3",
-    intern: "Maria Santos",
-    date: "Oct 12",
-    hours: 8,
-    summary: "Responsive layout for the reports page",
-    status: "pending",
-    timeCategory: "late",
-  },
-  {
-    id: "j-4",
-    intern: "Paolo Reyes",
-    date: "Oct 11",
-    hours: 6,
-    summary: "Reviewed API documentation",
-    status: "pending",
-    timeCategory: "late",
-  },
-  {
-    id: "j-5",
-    intern: "Kristine Lopez",
-    date: "Oct 12",
-    hours: 8,
-    summary: "Fixed form validation bugs",
-    status: "approved",
-    timeCategory: "late",
-  },
-];
+export type PendingEntry = {
+  id: string;
+  student_id: string;
+  work_date: string;
+  time_in: string;
+  time_out: string;
+};
 
-const INITIAL_TASKS = [
-  { id: "t1", text: "Set up project repository", done: true },
-  { id: "t2", text: "Build responsive pages in React", done: true },
-  { id: "t3", text: "Integrate attendance REST API", done: false },
-  { id: "t4", text: "Write unit tests and weekly report", done: false },
-];
+export type TodayEntry = {
+  student_id: string;
+  time_in: string;
+  time_out: string;
+};
+
+export type UpheldReport = {
+  id: string;
+  company_id: string;
+  category: string;
+  related_date: string;
+  description: string;
+};
+
+export type AppealRow = {
+  id: string;
+  report_id: string;
+  category: string;
+  related_date: string;
+  report_description: string;
+  reason: string;
+  status: string;
+};
+
+type Filter = "all" | "today" | "earlier";
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join("");
+}
+
+const CARD = "rounded-[12px] border border-border bg-card shadow-sm";
+const TITLE = "text-[15px] font-medium leading-5 text-foreground";
 
 export function SupervisorWorkspaceClient({
-  initialJournals = INITIAL_JOURNALS,
+  today,
+  students,
+  pending,
+  todayEntries,
+  evaluatedIds,
+  companyName,
+  upheldReports,
+  appeals,
+  journal,
 }: {
-  initialJournals?: JournalRow[];
+  today: string;
+  students: StudentRow[];
+  pending: PendingEntry[];
+  todayEntries: TodayEntry[];
+  evaluatedIds: string[];
+  companyName: Record<string, string>;
+  upheldReports: UpheldReport[];
+  appeals: AppealRow[];
+  journal: JournalEntry[];
 }) {
-  const [journals, setJournals] = useState<JournalRow[]>(initialJournals);
-  const [filter, setFilter] = useState<"all" | "today" | "late">("all");
-  const [tasks, setTasks] = useState(INITIAL_TASKS);
-  const [ratings, setRatings] = useState({
-    punctuality: 4,
-    quality: 5,
-    initiative: 3,
-    teamwork: 4,
-  });
-  const [remarks, setRemarks] = useState("");
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Filter>("all");
 
-  const filteredJournals = journals.filter((j) => {
-    if (filter === "all") return true;
-    if (filter === "today") return j.timeCategory === "today";
-    if (filter === "late") return j.timeCategory === "late";
-    return true;
-  });
+  const nameOf = new Map(students.map((s) => [s.id, s.name]));
+  const evaluated = new Set(evaluatedIds);
+  const appealOf = new Map(appeals.map((a) => [a.report_id, a]));
+  const todayOf = new Map(todayEntries.map((e) => [e.student_id, e]));
 
-  const handleDecision = (id: string, decision: "approved" | "rejected") => {
-    setJournals((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, status: decision } : j))
-    );
-    showToast(`Journal ${decision === "approved" ? "approved" : "rejected"} successfully`);
-  };
+  const filtered = pending.filter((e) =>
+    filter === "all"
+      ? true
+      : filter === "today"
+        ? e.work_date === today
+        : e.work_date < today,
+  );
 
-  const toggleTask = (id: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t))
-    );
-  };
+  const pendingHours = pending.reduce(
+    (sum, e) => sum + Math.max(0, hoursBetween(e.time_in, e.time_out)),
+    0,
+  );
+  const approvedHours = students.reduce(
+    (sum, s) => sum + Number(s.approved_hours),
+    0,
+  );
+  const notEvaluated = students.filter((s) => !evaluated.has(s.id)).length;
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
-
-  const pendingCount = journals.filter((j) => j.status === "pending").length;
+  const tabs: { key: Filter; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "today", label: "Today" },
+    { key: "earlier", label: "Earlier" },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Toast Notice */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-[10px] border border-border border-l-4 border-l-primary bg-card p-4 shadow-lg text-sm text-foreground flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
-          <Check className="size-4 text-primary" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
-      {/* 2-Column Main Layout: Left side content (minmax(0,1fr)), Right aside (292px) */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_292px] gap-6 items-start">
         {/* Left Column */}
         <div className="flex flex-col gap-6 min-w-0">
-          {/* KPI Row (4 KPIs) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             <KpiCard
               label="Active interns"
-              value={12}
-              subtitle="3 finishing this month"
+              value={students.length}
+              subtitle="Placed at your company"
             />
             <KpiCard
-              label="Journals to approve"
-              value={pendingCount}
-              trend="↑ 3 since yesterday"
-              trendDirection="down"
+              label="Hours to approve"
+              value={pending.length}
+              subtitle={
+                pending.length === 0
+                  ? "Nothing waiting"
+                  : `${formatHours(pendingHours)} hrs waiting`
+              }
             />
             <KpiCard
               label="Evaluations due"
-              value={3}
-              subtitle="Next: Oct 18"
+              value={notEvaluated}
+              subtitle={
+                students.length === 0
+                  ? "No interns yet"
+                  : `${students.length - notEvaluated} of ${students.length} submitted`
+              }
             />
             <KpiCard
-              label="Hours this week"
-              value="412"
-              trend="↑ 2.4%"
-              trendDirection="up"
+              label="Hours approved"
+              value={formatHours(approvedHours)}
+              subtitle="All interns, to date"
             />
           </div>
 
-          {/* Journal Approvals Card */}
-          <div className="rounded-[12px] border border-border bg-card shadow-sm overflow-hidden" id="journals">
+          {/* Hours approvals */}
+          <div className={cn(CARD, "overflow-hidden")} id="journals">
             <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-border">
-              <h2 className="text-[15px] font-medium leading-5 text-foreground">
-                Journal approvals
-              </h2>
-              {/* Filter Tabs */}
-              <div className="inline-flex rounded-[8px] bg-surface p-0.5" role="tablist">
-                <button
-                  type="button"
-                  onClick={() => setFilter("all")}
-                  className={cn(
-                    "rounded-[6px] px-3 py-1 text-[13px] font-medium transition-all cursor-pointer",
-                    filter === "all"
-                      ? "bg-card text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  All
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilter("today")}
-                  className={cn(
-                    "rounded-[6px] px-3 py-1 text-[13px] font-medium transition-all cursor-pointer",
-                    filter === "today"
-                      ? "bg-card text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Today
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilter("late")}
-                  className={cn(
-                    "rounded-[6px] px-3 py-1 text-[13px] font-medium transition-all cursor-pointer",
-                    filter === "late"
-                      ? "bg-card text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Overdue
-                </button>
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[13px]">
-                <thead className="bg-surface text-[12px] text-muted-foreground border-b border-border">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Intern</th>
-                    <th className="px-3 py-2 font-medium">Date</th>
-                    <th className="px-3 py-2 font-medium">Hours</th>
-                    <th className="px-3 py-2 font-medium">Summary</th>
-                    <th className="px-3 py-2 font-medium">Status</th>
-                    <th className="px-3 py-2 font-medium text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filteredJournals.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                        No journals in this view.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredJournals.map((j) => (
-                      <tr key={j.id} className="hover:bg-surface/50 transition-colors">
-                        <td className="px-3 py-2.5 font-medium text-foreground whitespace-nowrap">
-                          {j.intern}
-                        </td>
-                        <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">
-                          {j.date}
-                        </td>
-                        <td className="px-3 py-2.5 font-mono text-foreground whitespace-nowrap">
-                          {j.hours} hrs
-                        </td>
-                        <td className="px-3 py-2.5 text-foreground max-w-[280px] truncate">
-                          {j.summary}
-                        </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap">
-                          <Pill variant={j.status}>
-                            {j.status === "approved"
-                              ? "Approved"
-                              : j.status === "rejected"
-                              ? "Rejected"
-                              : "Pending"}
-                          </Pill>
-                        </td>
-                        <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                          {j.status === "pending" ? (
-                            <div className="inline-flex items-center gap-1.5">
-                              <Button
-                                size="sm"
-                                variant="blueOutline"
-                                onClick={() => handleDecision(j.id, "approved")}
-                              >
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleDecision(j.id, "rejected")}
-                              >
-                                Reject
-                              </Button>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Subgrid: Intern evaluation + Scope of work */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-            {/* Card 1: Intern evaluation */}
-            <div className="rounded-[12px] border border-border bg-card p-4 shadow-sm" id="evaluations">
-              <h3 className="text-[15px] font-medium leading-5 text-foreground mb-3">
-                Intern evaluation
-              </h3>
-              {/* Intern Info */}
-              <div className="flex items-center gap-3 mb-4">
-                <span className="size-8 rounded-full bg-primary/10 text-primary font-semibold text-xs flex items-center justify-center shrink-0">
-                  KL
-                </span>
-                <div>
-                  <div className="text-sm font-medium text-foreground">Kristine Lopez</div>
-                  <div className="text-xs text-muted-foreground">
-                    Midterm · <span className="font-mono">OJT-2026-00167</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 4 Rating Segments */}
-              <div className="flex flex-col gap-3">
-                <RatingSegment
-                  label="Punctuality"
-                  value={ratings.punctuality}
-                  onChange={(v) => setRatings((p) => ({ ...p, punctuality: v }))}
-                />
-                <RatingSegment
-                  label="Quality of work"
-                  value={ratings.quality}
-                  onChange={(v) => setRatings((p) => ({ ...p, quality: v }))}
-                />
-                <RatingSegment
-                  label="Initiative"
-                  value={ratings.initiative}
-                  onChange={(v) => setRatings((p) => ({ ...p, initiative: v }))}
-                />
-                <RatingSegment
-                  label="Teamwork"
-                  value={ratings.teamwork}
-                  onChange={(v) => setRatings((p) => ({ ...p, teamwork: v }))}
-                />
-              </div>
-
-              {/* Remarks */}
-              <div className="mt-4">
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  Supervisor remarks
-                </label>
-                <textarea
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="Strengths, areas to improve"
-                  rows={2}
-                  className="w-full rounded-[8px] border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
-                />
-              </div>
-
-              {/* Actions */}
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => showToast("Evaluation draft saved")}
-                >
-                  Save draft
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => {
-                    showToast("Evaluation submitted for Kristine Lopez");
-                    setRemarks("");
-                  }}
-                >
-                  Submit evaluation
-                </Button>
-              </div>
-            </div>
-
-            {/* Card 2: Scope of work · Web Dev Intern */}
-            <div className="rounded-[12px] border border-border bg-card p-4 shadow-sm" id="interns">
-              <h3 className="text-[15px] font-medium leading-5 text-foreground mb-3">
-                Scope of work · Web Dev Intern
-              </h3>
-
-              {/* Checklist */}
-              <div className="flex flex-col gap-2">
-                {tasks.map((task) => (
-                  <label
-                    key={task.id}
-                    onClick={() => toggleTask(task.id)}
-                    className="flex items-center gap-2.5 text-sm cursor-pointer select-none py-1 group"
+              <h2 className={TITLE}>Hours approvals</h2>
+              <div
+                className="inline-flex rounded-[8px] bg-surface p-0.5"
+                role="group"
+                aria-label="Filter entries by date"
+              >
+                {tabs.map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    aria-pressed={filter === t.key}
+                    onClick={() => setFilter(t.key)}
+                    className={cn(
+                      "rounded-[6px] px-3 py-1 text-[13px] font-medium transition-all cursor-pointer",
+                      filter === t.key
+                        ? "bg-card text-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
                   >
-                    <span
-                      className={cn(
-                        "size-[18px] rounded-[5px] border flex items-center justify-center transition-colors shrink-0",
-                        task.done
-                          ? "bg-primary border-primary text-white"
-                          : "border-muted-foreground/30 group-hover:border-primary"
-                      )}
-                    >
-                      {task.done && <Check className="size-3 stroke-[2.5]" />}
-                    </span>
-                    <span
-                      className={cn(
-                        task.done ? "text-muted-foreground line-through" : "text-foreground"
-                      )}
-                    >
-                      {task.text}
-                    </span>
-                  </label>
+                    {t.label}
+                  </button>
                 ))}
               </div>
+            </div>
 
-              <div className="mt-2 text-xs text-muted-foreground">
-                Acknowledged by 3 of 3 interns
+            {filtered.length === 0 ? (
+              <EmptyState
+                title={
+                  pending.length === 0
+                    ? "Nothing is waiting"
+                    : "No entries in this view"
+                }
+                description={
+                  pending.length === 0
+                    ? "When your interns log hours, they will show up here for your approval."
+                    : "Try another filter."
+                }
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-[13px]">
+                  <thead className="bg-surface text-[12px] text-muted-foreground border-b border-border">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Intern</th>
+                      <th className="px-3 py-2 font-medium">Date</th>
+                      <th className="px-3 py-2 font-medium">In</th>
+                      <th className="px-3 py-2 font-medium">Out</th>
+                      <th className="px-3 py-2 font-medium">Hours</th>
+                      <th className="px-3 py-2 font-medium text-right">
+                        Decision
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filtered.map((e) => (
+                      <tr
+                        key={e.id}
+                        className="hover:bg-surface/50 transition-colors"
+                      >
+                        <td className="px-3 py-2.5 font-medium text-foreground whitespace-nowrap">
+                          {nameOf.get(e.student_id) ?? "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap tabular-nums">
+                          {e.work_date}
+                        </td>
+                        <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap tabular-nums">
+                          {shortTime(e.time_in)}
+                        </td>
+                        <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap tabular-nums">
+                          {shortTime(e.time_out)}
+                        </td>
+                        <td className="px-3 py-2.5 font-mono text-foreground whitespace-nowrap">
+                          {formatHours(hoursBetween(e.time_in, e.time_out))} hrs
+                        </td>
+                        <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                          <form
+                            action={decideAsSupervisor}
+                            className="inline-flex items-center gap-1.5"
+                          >
+                            <input type="hidden" name="entry_id" value={e.id} />
+                            <Button
+                              type="submit"
+                              size="sm"
+                              variant="blueOutline"
+                              name="decision"
+                              value="approved"
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              type="submit"
+                              size="sm"
+                              variant="ghost"
+                              name="decision"
+                              value="rejected"
+                            >
+                              Reject
+                            </Button>
+                          </form>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+            )}
+          </div>
 
-              <div className="mt-3 flex items-center gap-2">
-                <Button variant="blueOutline" size="sm">
-                  Edit scope
-                </Button>
-                <Button variant="ghost" size="sm">
-                  Version history
-                </Button>
-              </div>
+          {/* Evaluations + progress */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            <div className={cn(CARD, "p-4")} id="evaluations">
+              <h3 className={cn(TITLE, "mb-3")}>Intern evaluations</h3>
+              {students.length === 0 ? (
+                <EmptyState
+                  title="No interns yet"
+                  description="Evaluations appear here once students are placed at your company."
+                />
+              ) : (
+                <ul className="divide-y divide-border">
+                  {students.map((s) => {
+                    const done = evaluated.has(s.id);
+                    return (
+                      <li
+                        key={s.id}
+                        className="py-2.5 flex flex-wrap items-center justify-between gap-2 first:pt-0 last:pb-0"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            aria-hidden="true"
+                            className="size-8 rounded-full bg-primary/10 text-primary font-semibold text-xs flex items-center justify-center shrink-0"
+                          >
+                            {initials(s.name)}
+                          </span>
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-foreground truncate">
+                              {s.name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              <span className="font-mono">{s.student_no}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Pill variant={done ? "approved" : "pending"}>
+                            {done ? "Submitted" : "Not submitted"}
+                          </Pill>
+                          <Link
+                            href={`/supervisor/evaluate/${s.id}`}
+                            className={buttonVariants({
+                              size: "sm",
+                              variant: done ? "outline" : "default",
+                            })}
+                          >
+                            {done ? "Edit" : "Evaluate"}
+                          </Link>
+                          {done && (
+                            <Link
+                              href={`/evaluations/${s.id}`}
+                              className={buttonVariants({
+                                size: "sm",
+                                variant: "ghost",
+                              })}
+                            >
+                              View
+                            </Link>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
 
-              {/* Intern progress section */}
-              <h4 className="mt-5 mb-3 text-[14px] font-medium text-foreground">
-                Intern progress
-              </h4>
-              <div className="flex flex-col gap-3">
-                <div>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-medium text-foreground">Maria Santos</span>
-                    <span className="font-mono text-muted-foreground">320 / 486</span>
-                  </div>
-                  <ProgressBar value={320} max={486} color="primary" />
+            <div className={cn(CARD, "p-4")} id="interns">
+              <h3 className={cn(TITLE, "mb-3")}>Intern progress</h3>
+              {students.length === 0 ? (
+                <EmptyState
+                  title="No interns yet"
+                  description="Approved hours against the required hours will show here."
+                />
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {students.map((s) => {
+                    const approved = Number(s.approved_hours);
+                    const required = Number(s.required_hours);
+                    const waiting = Number(s.pending_count);
+                    return (
+                      <div key={s.id}>
+                        <div className="flex items-center justify-between text-xs mb-1 gap-2">
+                          <span className="font-medium text-foreground truncate">
+                            {s.name}
+                            <span className="ml-1.5 font-normal text-muted-foreground">
+                              {s.course}
+                            </span>
+                          </span>
+                          <span className="font-mono text-muted-foreground shrink-0">
+                            {formatHours(approved)} / {required}
+                          </span>
+                        </div>
+                        <ProgressBar
+                          value={approved}
+                          max={required > 0 ? required : 1}
+                          color="primary"
+                          aria-label={`${s.name} approved hours`}
+                        />
+                        {waiting > 0 && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {waiting} {waiting === 1 ? "entry" : "entries"}{" "}
+                            pending
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-
-                <div>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-medium text-foreground">Kristine Lopez</span>
-                    <span className="font-mono text-muted-foreground">380 / 486</span>
-                  </div>
-                  <ProgressBar value={380} max={486} color="primary" />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-medium text-foreground">Paolo Reyes</span>
-                    <span className="font-mono text-muted-foreground">53 / 240</span>
-                  </div>
-                  <ProgressBar value={53} max={240} color="warning" />
-                </div>
-              </div>
+              )}
             </div>
           </div>
+
+          {/* Journals (read only) */}
+          {journal.length > 0 && (
+            <div className={cn(CARD, "p-4")}>
+              <h3 className={cn(TITLE, "mb-1")}>Student journals</h3>
+              <p className="mb-3 text-xs text-muted-foreground">
+                The latest entries your students wrote about their days. You
+                can read them; the school coordinator approves them.
+              </p>
+              <div className="flex flex-col gap-3">
+                {journal.map((j) => (
+                  <article
+                    key={j.id}
+                    className="flex flex-col gap-1 rounded-[8px] border border-border p-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-medium">
+                        {nameOf.get(j.student_id) ?? "A student"}{" "}
+                        <span className="font-mono text-xs font-normal tabular-nums text-muted-foreground">
+                          {j.work_date}
+                        </span>
+                      </p>
+                      <Pill
+                        variant={
+                          j.status === "approved"
+                            ? "approved"
+                            : j.status === "rejected"
+                              ? "rejected"
+                              : "pending"
+                        }
+                      >
+                        {JOURNAL_STATUS_LABEL[j.status]}
+                      </Pill>
+                    </div>
+                    <p className="whitespace-pre-wrap text-sm">{j.body}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Upheld reports */}
+          {upheldReports.length > 0 && (
+            <div className={cn(CARD, "p-4")}>
+              <h3 className={cn(TITLE, "mb-1")}>
+                Upheld reports about your company
+              </h3>
+              <p className="mb-3 text-xs text-muted-foreground">
+                A school coordinator reviewed these and upheld them. They do
+                not say who raised them. Please make sure the work students do
+                matches the tasks agreed with the school.
+              </p>
+              <div className="flex flex-col gap-3">
+                {upheldReports.map((r) => {
+                  const appeal = appealOf.get(r.id);
+                  return (
+                    <article
+                      key={r.id}
+                      className="flex flex-col gap-1 rounded-[8px] border border-border p-3"
+                    >
+                      <p className="text-sm font-medium">
+                        {CATEGORY_LABEL[r.category] ?? r.category}{" "}
+                        <span className="font-normal tabular-nums text-muted-foreground">
+                          · {r.related_date} · {companyName[r.company_id] ?? "—"}
+                        </span>
+                      </p>
+                      <p className="whitespace-pre-wrap text-sm">
+                        {r.description}
+                      </p>
+                      {appeal ? (
+                        <div>
+                          <Pill variant="pending">
+                            {APPEAL_STATUS_LABEL[appeal.status] ??
+                              appeal.status}
+                          </Pill>
+                        </div>
+                      ) : (
+                        <details className="group">
+                          <summary className="w-fit cursor-pointer list-none rounded-[8px] border border-border px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            Appeal this report
+                          </summary>
+                          <form
+                            action={appealReport}
+                            className="mt-3 flex flex-col gap-2"
+                          >
+                            <input type="hidden" name="report_id" value={r.id} />
+                            <label
+                              htmlFor={`reason-${r.id}`}
+                              className="text-sm font-medium"
+                            >
+                              Why should this report not stand?
+                            </label>
+                            <textarea
+                              id={`reason-${r.id}`}
+                              name="reason"
+                              required
+                              minLength={10}
+                              maxLength={2000}
+                              rows={3}
+                              className="w-full rounded-[8px] border border-border bg-surface px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              A Dugtong admin will decide. You can appeal a
+                              report once, and the decision is final.
+                            </p>
+                            <div>
+                              <Button type="submit" size="sm">
+                                Send appeal
+                              </Button>
+                            </div>
+                          </form>
+                        </details>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Appeals */}
+          {appeals.length > 0 && (
+            <div className={cn(CARD, "p-4")}>
+              <h3 className={cn(TITLE, "mb-1")}>Your appeals</h3>
+              <p className="mb-3 text-xs text-muted-foreground">
+                A Dugtong admin decides each appeal. If an appeal is granted,
+                the report no longer counts against your company.
+              </p>
+              <div className="flex flex-col gap-3">
+                {appeals.map((a) => (
+                  <article
+                    key={a.id}
+                    className="flex flex-col gap-2 rounded-[8px] border border-border p-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-medium">
+                        {CATEGORY_LABEL[a.category] ?? a.category}{" "}
+                        <span className="font-normal tabular-nums text-muted-foreground">
+                          · {a.related_date}
+                        </span>
+                      </p>
+                      <Pill
+                        variant={
+                          a.status === "granted"
+                            ? "approved"
+                            : a.status === "denied"
+                              ? "rejected"
+                              : "pending"
+                        }
+                      >
+                        {APPEAL_STATUS_LABEL[a.status] ?? a.status}
+                      </Pill>
+                    </div>
+                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                      {a.report_description}
+                    </p>
+                    <p className="whitespace-pre-wrap text-sm">
+                      <span className="font-medium">Your reason: </span>
+                      {a.reason}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Right Aside: 292px */}
+        {/* Right Aside */}
         <aside className="flex flex-col gap-6" id="attendance">
-          {/* Today's Attendance */}
-          <div className="rounded-[12px] border border-border bg-card p-4 shadow-sm">
-            <h3 className="text-[15px] font-medium leading-5 text-foreground mb-3">
-              Today&apos;s attendance
-            </h3>
-            <div className="divide-y divide-border text-[13px]">
-              <div className="py-2.5 flex items-center justify-between gap-2 first:pt-0">
-                <div className="flex items-center gap-2.5">
-                  <span className="size-7 rounded-full bg-primary/10 text-primary font-semibold text-xs flex items-center justify-center shrink-0">
-                    MS
-                  </span>
-                  <div>
-                    <div className="font-medium text-foreground">Maria Santos</div>
-                    <div className="text-xs text-muted-foreground">In 8:02 AM</div>
-                  </div>
-                </div>
-                <Pill variant="approved">On time</Pill>
-              </div>
-
-              <div className="py-2.5 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <span className="size-7 rounded-full bg-primary/10 text-primary font-semibold text-xs flex items-center justify-center shrink-0">
-                    KL
-                  </span>
-                  <div>
-                    <div className="font-medium text-foreground">Kristine Lopez</div>
-                    <div className="text-xs text-muted-foreground">In 8:41 AM</div>
-                  </div>
-                </div>
-                <Pill variant="pending">Late</Pill>
-              </div>
-
-              <div className="py-2.5 flex items-center justify-between gap-2 last:pb-0">
-                <div className="flex items-center gap-2.5">
-                  <span className="size-7 rounded-full bg-primary/10 text-primary font-semibold text-xs flex items-center justify-center shrink-0">
-                    PR
-                  </span>
-                  <div>
-                    <div className="font-medium text-foreground">Paolo Reyes</div>
-                    <div className="text-xs text-muted-foreground">No time-in yet</div>
-                  </div>
-                </div>
-                <Pill variant="rejected">Absent</Pill>
-              </div>
-            </div>
-          </div>
-
-          {/* Upcoming Card */}
-          <div className="rounded-[12px] border border-border bg-card p-4 shadow-sm">
-            <h3 className="text-[15px] font-medium leading-5 text-foreground mb-3">
-              Upcoming
-            </h3>
-            <div className="divide-y divide-border text-[13px]">
-              <div className="py-2.5 flex items-start gap-3 first:pt-0">
-                <span className="size-2 rounded-full bg-primary mt-1.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-foreground leading-tight">
-                    Midterm evaluation, K. Lopez
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Oct 18</div>
-                </div>
-              </div>
-
-              <div className="py-2.5 flex items-start gap-3">
-                <span className="size-2 rounded-full bg-primary mt-1.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-foreground leading-tight">
-                    MOA renewal review
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Nov 02</div>
-                </div>
-              </div>
-
-              <div className="py-2.5 flex items-start gap-3 last:pb-0">
-                <span className="size-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-foreground leading-tight">
-                    Final report due, A. Villanueva
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Nov 09</div>
-                </div>
-              </div>
-            </div>
+          <div className={cn(CARD, "p-4")}>
+            <h3 className={cn(TITLE, "mb-3")}>Today&apos;s attendance</h3>
+            {students.length === 0 ? (
+              <EmptyState
+                title="No interns yet"
+                description="Today's time entries will show here."
+              />
+            ) : (
+              <ul className="divide-y divide-border text-[13px]">
+                {students.map((s) => {
+                  const entry = todayOf.get(s.id);
+                  return (
+                    <li
+                      key={s.id}
+                      className="py-2.5 flex items-center justify-between gap-2 first:pt-0 last:pb-0"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span
+                          aria-hidden="true"
+                          className="size-7 rounded-full bg-primary/10 text-primary font-semibold text-xs flex items-center justify-center shrink-0"
+                        >
+                          {initials(s.name)}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="font-medium text-foreground truncate">
+                            {s.name}
+                          </div>
+                          <div className="text-xs text-muted-foreground tabular-nums">
+                            {entry
+                              ? `${shortTime(entry.time_in)} – ${shortTime(entry.time_out)}`
+                              : "No entry yet"}
+                          </div>
+                        </div>
+                      </div>
+                      <Pill variant={entry ? "approved" : "neutral"}>
+                        {entry ? "Logged" : "None"}
+                      </Pill>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         </aside>
       </div>

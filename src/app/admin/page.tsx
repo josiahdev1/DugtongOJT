@@ -11,13 +11,17 @@ import {
 } from "./admin-charts";
 import {
   AdminVerificationTable,
-  AdminTrustAndHealth,
+  type PendingCompany,
 } from "./admin-verification-table";
-import { AdminAside } from "./admin-aside";
+import { AdminAside, type AsideActivity, type AsideEscalation } from "./admin-aside";
+import { CATEGORY_LABEL } from "@/lib/reports";
+import { DOCUMENT_KINDS } from "@/lib/employers";
 import {
   getThirtyDaysAgo,
   buildDailyHoursSlots,
-  buildWeeklyVerifications,
+  buildWeeklySignups,
+  daysSince,
+  timeAgo,
   buildWeeklyEscalations,
 } from "./chart-utils";
 import type { EmployerRow } from "./employers-card";
@@ -49,22 +53,40 @@ export default async function AdminOverviewPage({
   const { data: isAdmin } = await supabase.rpc("is_admin");
   if (!isAdmin) notFound();
 
-  // Live queries
-  const { data: schoolData } = await supabase.rpc("admin_list_schools");
+  const thirtyDaysAgo = getThirtyDaysAgo();
+
+  // Live queries, all in parallel.
+  const [
+    { data: schoolData },
+    { data: employerData },
+    { data: escalatedData },
+    { data: flaggedData },
+    { data: appealData },
+    { data: timeEntriesData },
+  ] = await Promise.all([
+    supabase.rpc("admin_list_schools"),
+    supabase.rpc("admin_list_employers"),
+    supabase.rpc("admin_escalated_reports"),
+    supabase.rpc("admin_flagged_companies"),
+    supabase.rpc("admin_pending_appeals"),
+    supabase
+      .from("time_entries")
+      .select("work_date, time_in, time_out, status")
+      .eq("status", "approved")
+      .gte("work_date", thirtyDaysAgo)
+      .order("work_date", { ascending: true }),
+  ]);
+
   const schools = (schoolData ?? []) as SchoolRow[];
   const waitingSchools = schools.filter((s) => !s.verified);
   const verifiedSchoolsCount = schools.filter((s) => s.verified).length;
 
-  const { data: employerData } = await supabase.rpc("admin_list_employers");
   const employers = (employerData ?? []) as EmployerRow[];
   const pendingEmployers = employers.filter((e) => e.status === "pending");
   const verifiedEmployersCount = employers.filter((e) => e.status === "verified").length;
 
-  const { data: escalatedData } = await supabase.rpc("admin_escalated_reports");
   const escalated = (escalatedData ?? []) as EscalatedReportRow[];
-  const { data: flaggedData } = await supabase.rpc("admin_flagged_companies");
   const flagged = (flaggedData ?? []) as FlaggedCompanyRow[];
-  const { data: appealData } = await supabase.rpc("admin_pending_appeals");
   const appeals = (appealData ?? []) as AppealRow[];
 
   const reportsWaiting =
@@ -74,20 +96,88 @@ export default async function AdminOverviewPage({
 
   const totalWaiting = waitingSchools.length + pendingEmployers.length;
 
-  // Active counts: use real DB data or baseline if unseeded
-  const institutionsValue = Math.max(verifiedSchoolsCount, 34);
-  const companiesValue = Math.max(verifiedEmployersCount, 128);
-  const waitingValue = Math.max(totalWaiting, 11);
-  const escalationsValue = Math.max(reportsWaiting, 5);
+  // Oldest thing waiting for verification, and escalations older than 3 days.
+  const oldestWaitingDays = [...waitingSchools, ...pendingEmployers].reduce(
+    (max, r) => Math.max(max, daysSince(r.created_at)),
+    0,
+  );
+  const olderThanThreeDays =
+    escalated.filter((r) => daysSince(r.escalated_at) > 3).length +
+    appeals.filter((r) => daysSince(r.created_at) > 3).length;
+
+  const pendingCompanies: PendingCompany[] = pendingEmployers.map((e) => ({
+    id: e.id,
+    name: e.name,
+    representative: e.representative_name,
+    ownerEmail: e.owner_email,
+    signedUp: e.created_at.slice(0, 10),
+    docsUploaded: (e.has_registration ? 1 : 0) + (e.has_permit ? 1 : 0),
+    docsRequired: DOCUMENT_KINDS.length,
+  }));
+
+  // Aside: newest waiting reports and appeals first.
+  const escalationItems: (AsideEscalation & { at: string })[] = [
+    ...escalated.map((r) => ({
+      id: `r-${r.id}`,
+      title: `${CATEGORY_LABEL[r.category] ?? r.category} report`,
+      detail: `${r.company_name} · ${r.school_name} · ${daysSince(r.escalated_at)}d`,
+      kind: "escalated" as const,
+      at: r.escalated_at,
+    })),
+    ...appeals.map((a) => ({
+      id: `a-${a.id}`,
+      title: `Appeal: ${CATEGORY_LABEL[a.category] ?? a.category}`,
+      detail: `${a.company_name} · ${a.school_name} · ${daysSince(a.created_at)}d`,
+      kind: "appeal" as const,
+      at: a.created_at,
+    })),
+  ].sort((x, y) => x.at.localeCompare(y.at));
+  const asideEscalations: AsideEscalation[] = escalationItems
+    .slice(0, 4)
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      detail: item.detail,
+      kind: item.kind,
+    }));
+
+  // Aside: recent real events (sign-ups and escalations), newest first.
+  const activityItems: (Omit<AsideActivity, "when"> & { at: string })[] = [
+    ...schools.map((s) => ({
+      id: `s-${s.id}`,
+      text: `School registered: ${s.name}`,
+      at: s.created_at,
+      tone: "primary" as const,
+    })),
+    ...employers.map((e) => ({
+      id: `e-${e.id}`,
+      text: `Company signed up: ${e.name}`,
+      at: e.created_at,
+      tone: "primary" as const,
+    })),
+    ...escalated.map((r) => ({
+      id: `er-${r.id}`,
+      text: `Report escalated: ${r.company_name}`,
+      at: r.escalated_at,
+      tone: "destructive" as const,
+    })),
+    ...appeals.map((a) => ({
+      id: `ap-${a.id}`,
+      text: `Appeal filed: ${a.company_name}`,
+      at: a.created_at,
+      tone: "destructive" as const,
+    })),
+  ]
+    .sort((x, y) => y.at.localeCompare(x.at))
+    .slice(0, 5);
+  const activity: AsideActivity[] = activityItems.map((a) => ({
+    id: a.id,
+    text: a.text,
+    tone: a.tone,
+    when: timeAgo(a.at),
+  }));
 
   // 1. Last 30 Days Approved Hours Query & Aggregation
-  const thirtyDaysAgo = getThirtyDaysAgo();
-  const { data: timeEntriesData } = await supabase
-    .from("time_entries")
-    .select("work_date, time_in, time_out, status")
-    .eq("status", "approved")
-    .gte("work_date", thirtyDaysAgo)
-    .order("work_date", { ascending: true });
 
   const hoursByDate = new Map<string, number>();
   for (const entry of (timeEntriesData ?? []) as { work_date: string; time_in: string; time_out: string }[]) {
@@ -97,8 +187,8 @@ export default async function AdminOverviewPage({
 
   const hoursChartData = buildDailyHoursSlots(hoursByDate);
 
-  // 2. Last 8 Weeks Verifications Aggregation
-  const verificationsChartData = buildWeeklyVerifications(schools, employers);
+  // 2. Last 8 Weeks Sign-ups Aggregation
+  const verificationsChartData = buildWeeklySignups(schools, employers);
 
   // 3. Last 12 Weeks Escalations Aggregation
   const escalationsSparklineData = buildWeeklyEscalations(escalated, appeals);
@@ -137,34 +227,36 @@ export default async function AdminOverviewPage({
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard
               label="Institutions"
-              value={institutionsValue}
-              trend="↑ 2 this month"
-              trendDirection="up"
+              value={verifiedSchoolsCount}
+              subtitle={`${schools.length} registered`}
             />
             <KpiCard
               label="Partner companies"
-              value={companiesValue}
-              trend="↑ 9 this month"
-              trendDirection="up"
+              value={verifiedEmployersCount}
+              subtitle={`${employers.length} registered`}
             />
             <KpiCard
               label="Awaiting verification"
-              value={waitingValue}
-              trend="↑ 4 since Monday"
-              trendDirection="down"
+              value={totalWaiting}
+              subtitle={
+                totalWaiting > 0
+                  ? `Oldest waiting ${oldestWaitingDays} ${oldestWaitingDays === 1 ? "day" : "days"}`
+                  : "All caught up"
+              }
             />
             <KpiCard
               label="Open escalations"
-              value={escalationsValue}
-              subtitle="2 older than 3 days"
+              value={reportsWaiting}
+              subtitle={
+                olderThanThreeDays > 0
+                  ? `${olderThanThreeDays} older than 3 days`
+                  : "None older than 3 days"
+              }
             />
           </div>
 
           {/* Company Verification Queue Table */}
-          <AdminVerificationTable />
-
-          {/* Operational Overview: Trust Score Distribution & System Health */}
-          <AdminTrustAndHealth />
+          <AdminVerificationTable companies={pendingCompanies} />
 
           {/* Analytics Grid: Approved Hours & Verifications Throughput */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
@@ -176,7 +268,9 @@ export default async function AdminOverviewPage({
         {/* Right Aside (300px): Escalations + Sparkline & Audit Log */}
         <AdminAside
           escalationData={escalationsSparklineData}
-          activeIssuesCount={escalationsValue}
+          activeIssuesCount={reportsWaiting}
+          escalations={asideEscalations}
+          activity={activity}
         />
       </div>
     </div>

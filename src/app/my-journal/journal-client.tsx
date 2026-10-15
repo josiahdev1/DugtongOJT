@@ -1,207 +1,206 @@
 "use client";
 
 import { useState } from "react";
-import { Button, FileUpload, Pill } from "@/components/ui";
-import { Check, CheckCircle2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { EmptyState, Pill } from "@/components/ui";
+import {
+  JOURNAL_MAX_CHARS,
+  JOURNAL_MIN_CHARS,
+  JOURNAL_STATUS_LABEL,
+} from "@/lib/journal";
+import { formatHours, hoursBetween, shortTime } from "@/lib/time";
+import { saveJournal } from "./actions";
 
-type Task = {
-  id: string;
-  label: string;
-  done: boolean;
+export type JournalDay = {
+  date: string;
+  timeIn: string;
+  timeOut: string;
+  entry: {
+    body: string;
+    status: "submitted" | "approved" | "rejected";
+    reviewNote: string | null;
+  } | null;
 };
 
-const INITIAL_TASKS: Task[] = [
-  { id: "t1", label: "Build responsive pages in React", done: true },
-  { id: "t2", label: "Integrate attendance REST API", done: false },
-];
+const PILL: Record<string, "pending" | "approved" | "rejected"> = {
+  submitted: "pending",
+  approved: "approved",
+  rejected: "rejected",
+};
 
-export function JournalClient({
-  date = "Wed, Oct 14, 2026",
-  initialHours = 8,
-}: {
-  date?: string;
-  initialHours?: number;
-}) {
-  const [timeIn, setTimeIn] = useState("9:00 AM");
-  const [timeOut, setTimeOut] = useState("6:00 PM");
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
-  const [body, setBody] = useState(
-    "Built the attendance table component and wired the filters."
-  );
-  const [toast, setToast] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+const INPUT =
+  "w-full rounded-[8px] border border-border bg-surface px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
-  const toggleTask = (id: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t))
+function prettyDate(date: string) {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+export function JournalClient({ days }: { days: JournalDay[] }) {
+  // Start on the newest day that still has no journal, else the newest day.
+  const first = days.find((d) => !d.entry) ?? days[0];
+  const [date, setDate] = useState(first?.date ?? "");
+  const day = days.find((d) => d.date === date) ?? first;
+  const [body, setBody] = useState(day?.entry?.body ?? "");
+
+  if (days.length === 0 || !day) {
+    return (
+      <div className="mx-auto w-full max-w-[375px] rounded-[12px] border border-border bg-card shadow-sm">
+        <EmptyState
+          title="No hours logged yet"
+          description="Log a day on the My hours page, then come back to write about it."
+        />
+      </div>
     );
+  }
+
+  const pickDay = (next: string) => {
+    setDate(next);
+    setBody(days.find((d) => d.date === next)?.entry?.body ?? "");
   };
 
-  const handleSave = () => {
-    setToast("Journal draft saved successfully.");
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setToast("Journal submitted for coordinator & supervisor approval.");
-    setTimeout(() => setToast(null), 3500);
-  };
+  const entry = day.entry;
+  const locked = entry?.status === "approved";
+  const hours = hoursBetween(day.timeIn, day.timeOut);
+  const written = days.filter((d) => d.entry);
 
   return (
     <div className="mx-auto w-full max-w-[375px] flex flex-col gap-4">
-      {/* Toast Notification */}
-      {toast && (
-        <div className="fixed top-20 right-6 z-50 rounded-[10px] border border-border border-l-4 border-l-primary bg-card p-3 shadow-lg text-sm text-foreground flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="size-4 text-primary" />
-          <span>{toast}</span>
-        </div>
-      )}
+      <form action={saveJournal} className="flex flex-col gap-4">
+        <input type="hidden" name="work_date" value={day.date} />
 
-      {/* Top Phone Header Bar */}
-      <div className="flex items-center justify-between rounded-[12px] border border-border bg-card px-4 py-3 shadow-xs">
-        <button
-          type="button"
-          onClick={() => {
-            setBody("");
-            setToast("Draft reset.");
-            setTimeout(() => setToast(null), 2000);
-          }}
-          className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
-          Cancel
-        </button>
-        <span className="text-base font-semibold text-foreground">
-          Log journal
-        </span>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="text-sm font-medium text-primary hover:text-primary-hover transition-colors cursor-pointer"
-        >
-          Save
-        </button>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {/* Date & Hours Card */}
-        <div className="rounded-[12px] border border-border bg-card p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs text-muted-foreground font-medium">Date</div>
-              <div className="text-sm font-medium text-foreground mt-0.5">{date}</div>
+        <div className="rounded-[12px] border border-border bg-card p-4 shadow-sm flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <label
+                htmlFor="journal-day"
+                className="block text-xs text-muted-foreground font-medium"
+              >
+                Date
+              </label>
+              <select
+                id="journal-day"
+                value={day.date}
+                onChange={(e) => pickDay(e.target.value)}
+                className={`${INPUT} mt-1`}
+              >
+                {days.map((d) => (
+                  <option key={d.date} value={d.date}>
+                    {prettyDate(d.date)}
+                    {d.entry ? "" : " (no journal yet)"}
+                  </option>
+                ))}
+              </select>
             </div>
-            <Pill variant="trust">{initialHours} hrs</Pill>
+            <Pill variant="trust">{formatHours(hours)} hrs</Pill>
           </div>
-        </div>
-
-        {/* Input Details Card */}
-        <div className="rounded-[12px] border border-border bg-card p-4 shadow-sm flex flex-col gap-4">
-          {/* Time In / Out */}
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-              Time in / out
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                value={timeIn}
-                onChange={(e) => setTimeIn(e.target.value)}
-                aria-label="Time in"
-                className="w-full rounded-[8px] border border-border bg-surface px-3 py-2 font-mono text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              />
-              <input
-                type="text"
-                value={timeOut}
-                onChange={(e) => setTimeOut(e.target.value)}
-                aria-label="Time out"
-                className="w-full rounded-[8px] border border-border bg-surface px-3 py-2 font-mono text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              />
-            </div>
-          </div>
-
-          {/* Tasks from scope of work */}
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-              Tasks from scope of work
-            </label>
-            <div className="flex flex-col gap-2">
-              {tasks.map((task) => (
-                <label
-                  key={task.id}
-                  onClick={() => toggleTask(task.id)}
-                  className="flex items-center gap-2.5 text-sm cursor-pointer select-none py-1 group"
-                >
-                  <span
-                    className={cn(
-                      "size-[18px] rounded-[5px] border flex items-center justify-center transition-colors shrink-0",
-                      task.done
-                        ? "bg-primary border-primary text-white"
-                        : "border-muted-foreground/30 group-hover:border-primary"
-                    )}
-                  >
-                    {task.done && <Check className="size-3 stroke-[2.5]" />}
-                  </span>
-                  <span
-                    className={cn(
-                      task.done ? "text-muted-foreground line-through" : "text-foreground"
-                    )}
-                  >
-                    {task.label}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Daily reflection */}
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-              What did you do today?
-            </label>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value.slice(0, 500))}
-              aria-label="Journal"
-              rows={4}
-              placeholder="Describe tasks completed, learnings, or blockers encountered"
-              className="w-full rounded-[8px] border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
-            />
-            <div className="mt-1 text-right text-xs text-muted-foreground font-mono">
-              {body.length} / 500
-            </div>
-          </div>
-
-          {/* Proof Upload */}
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-              Proof (optional)
-            </label>
-            <FileUpload
-              accept="image/*,.pdf"
-              maxSizeMB={5}
-              hint="Screenshots, PR links, or task sign-offs"
-              onFileSelect={(file) => setSelectedFile(file)}
-            />
-            {selectedFile && (
-              <div className="mt-2 text-xs text-primary font-medium truncate">
-                Selected: {selectedFile.name}
-              </div>
+          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>
+              Time in / out:{" "}
+              <span className="font-mono text-foreground">
+                {shortTime(day.timeIn)} - {shortTime(day.timeOut)}
+              </span>
+            </span>
+            {entry ? (
+              <Pill variant={PILL[entry.status]}>
+                {JOURNAL_STATUS_LABEL[entry.status]}
+              </Pill>
+            ) : (
+              <Pill variant="neutral">No journal yet</Pill>
             )}
           </div>
         </div>
 
-        {/* Submit Button */}
-        <Button
-          type="submit"
-          variant="primary"
-          className="w-full py-2.5 text-sm font-medium"
-        >
-          Submit for approval
-        </Button>
+        {entry?.status === "rejected" && entry.reviewNote && (
+          <p className="rounded-[8px] border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+            <span className="font-medium">Your coordinator asked: </span>
+            {entry.reviewNote}
+          </p>
+        )}
+
+        {/* Daily reflection */}
+        <div className="rounded-[12px] border border-border bg-card p-4 shadow-sm flex flex-col gap-3">
+          <div>
+            <label
+              htmlFor="journal-body"
+              className="block text-xs font-medium text-muted-foreground mb-1.5"
+            >
+              What did you do, and what did you learn?
+            </label>
+            {locked ? (
+              <p className="whitespace-pre-wrap text-sm text-foreground">
+                {entry?.body}
+              </p>
+            ) : (
+              <>
+                <textarea
+                  id="journal-body"
+                  name="body"
+                  required
+                  rows={6}
+                  minLength={JOURNAL_MIN_CHARS}
+                  maxLength={JOURNAL_MAX_CHARS}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder="Describe tasks completed, learnings, or blockers encountered"
+                  className={`${INPUT} placeholder:text-muted-foreground resize-none`}
+                />
+                <div className="mt-1 flex justify-between gap-2 text-xs text-muted-foreground">
+                  <span>
+                    At least {JOURNAL_MIN_CHARS} characters. Do not put
+                    anyone else&apos;s private details in it.
+                  </span>
+                  <span className="font-mono shrink-0">
+                    {body.length} / {JOURNAL_MAX_CHARS}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+          {locked && (
+            <p className="text-xs text-muted-foreground">
+              This entry is approved, so it can no longer be edited.
+            </p>
+          )}
+        </div>
+
+        {!locked && (
+          <button
+            type="submit"
+            className="inline-flex w-full cursor-pointer items-center justify-center rounded-[8px] bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            {entry ? "Save changes" : "Submit for approval"}
+          </button>
+        )}
       </form>
+
+      {written.length > 0 && (
+        <div className="rounded-[12px] border border-border bg-card p-4 shadow-sm flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-foreground">
+            Your journals
+          </h2>
+          {written.map((d) => (
+            <button
+              key={d.date}
+              type="button"
+              onClick={() => pickDay(d.date)}
+              className="flex cursor-pointer items-center justify-between gap-2 rounded-[8px] border border-border px-3 py-2 text-left text-sm hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="font-mono tabular-nums">{d.date}</span>
+              {d.entry && (
+                <Pill variant={PILL[d.entry.status]}>
+                  {JOURNAL_STATUS_LABEL[d.entry.status]}
+                </Pill>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
-
