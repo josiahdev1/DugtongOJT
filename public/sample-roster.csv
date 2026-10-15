@@ -1,0 +1,6 @@
+name,student_id,course,email,company,required_hours
+Sample Student 1,SAMPLE-001,BS Information Technology,sample1@example.test,Sample Company,300
+Sample Student 2,SAMPLE-002,BS Information Technology,sample2@example.test,Sample Company,300
+Sample Student 3,SAMPLE-003,BS Computer Science,sample3@example.test,Sample Company,240
+Sample Student 4,SAMPLE-004,BS Accountancy,sample4@example.test,Sample Company,240
+Sample Student 5,SAMPLE-005,BS Business Administration,sample5@example.test,Sample Company,300
