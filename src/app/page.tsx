@@ -16,13 +16,22 @@ export const dynamic = "force-dynamic";
 // The front door decides where each person goes:
 //   signed out            -> /login
 //   coordinator           -> /dashboard
-//   anyone else           -> "you are not on a roster" (student pages
-//                            arrive in ticket 05)
+//   on a roster           -> /my-hours
+//   anyone else           -> "you are not on a roster"
 export default async function Home() {
-  const { user, school } = await getCurrentUser();
+  const { supabase, user, school } = await getCurrentUser();
 
   if (!user) redirect("/login");
   if (school) redirect("/dashboard");
+
+  // Row Level Security returns a roster row only if it belongs to this
+  // user's verified email. No row means they are not on any roster.
+  const { data: student } = await supabase
+    .from("students")
+    .select("id")
+    .limit(1)
+    .maybeSingle();
+  if (student) redirect("/my-hours");
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-12">
