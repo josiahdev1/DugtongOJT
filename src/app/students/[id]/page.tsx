@@ -9,50 +9,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
+import { UUID_RE } from "@/lib/ids";
+import { STATUS_LABEL } from "@/lib/status";
 import { formatHours, hoursBetween, shortTime } from "@/lib/time";
-import { decideEntry } from "./actions";
+import { ChangeHistory } from "./change-history";
+import { decideEntry, issueCertificate } from "./actions";
 
 export const dynamic = "force-dynamic";
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  approved: "Approved",
-  rejected: "Rejected",
-};
-
-type Snapshot = {
-  status?: string;
-  work_date?: string;
-  time_in?: string;
-  time_out?: string;
-};
-
-// "pending → approved" or "08:00–17:00 → 08:00–18:00", whichever changed.
-function describeChange(oldV: Snapshot, newV: Snapshot) {
-  const parts: string[] = [];
-  if (oldV.status !== newV.status) {
-    parts.push(
-      `${STATUS_LABEL[oldV.status ?? ""] ?? oldV.status} → ${STATUS_LABEL[newV.status ?? ""] ?? newV.status}`,
-    );
-  }
-  if (oldV.time_in !== newV.time_in || oldV.time_out !== newV.time_out) {
-    parts.push(
-      `${shortTime(oldV.time_in ?? "")}–${shortTime(oldV.time_out ?? "")} → ${shortTime(newV.time_in ?? "")}–${shortTime(newV.time_out ?? "")}`,
-    );
-  }
-  return parts.join("; ");
-}
-
-function formatWhen(iso: string) {
-  return new Date(iso).toLocaleString("en-PH", {
-    timeZone: "Asia/Manila",
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
 
 export default async function StudentDetailPage({
   params,
@@ -78,25 +41,34 @@ export default async function StudentDetailPage({
     .maybeSingle();
   if (!student) notFound();
 
-  const [{ data: company }, { data: entries }, { data: totals }] =
-    await Promise.all([
-      supabase
-        .from("companies")
-        .select("name, supervisor_name")
-        .eq("id", student.company_id)
-        .maybeSingle(),
-      supabase
-        .from("time_entries")
-        .select("id, work_date, time_in, time_out, status")
-        .eq("student_id", id)
-        .order("work_date", { ascending: false }),
-      // Added up by the database, not by this page.
-      supabase
-        .from("student_hours")
-        .select("approved_hours, pending_count")
-        .eq("student_id", id)
-        .maybeSingle(),
-    ]);
+  const [
+    { data: company },
+    { data: entries },
+    { data: totals },
+    { data: certificate },
+  ] = await Promise.all([
+    supabase
+      .from("companies")
+      .select("name, supervisor_name")
+      .eq("id", student.company_id)
+      .maybeSingle(),
+    supabase
+      .from("time_entries")
+      .select("id, work_date, time_in, time_out, status")
+      .eq("student_id", id)
+      .order("work_date", { ascending: false }),
+    // Added up by the database, not by this page.
+    supabase
+      .from("student_hours")
+      .select("approved_hours, pending_count")
+      .eq("student_id", id)
+      .maybeSingle(),
+    supabase
+      .from("certificates")
+      .select("id")
+      .eq("student_id", id)
+      .maybeSingle(),
+  ]);
 
   const entryIds = (entries ?? []).map((e) => e.id);
   const dateOf = new Map((entries ?? []).map((e) => [e.id, e.work_date]));
@@ -105,12 +77,15 @@ export default async function StudentDetailPage({
       ? { data: [] }
       : await supabase
           .from("time_entry_changes")
-          .select("id, changed_at, entry_id, changed_by, old_values, new_values")
+          .select(
+            "id, changed_at, entry_id, changed_by, actor_role, old_values, new_values",
+          )
           .in("entry_id", entryIds)
           .order("changed_at", { ascending: false });
 
   const approved = Number(totals?.approved_hours ?? 0);
   const pending = Number(totals?.pending_count ?? 0);
+  const reachedRequired = approved >= student.required_hours;
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8">
@@ -132,7 +107,10 @@ export default async function StudentDetailPage({
             {student.email}
           </p>
         </div>
-        <Link href={`/students/${id}/report`} className={buttonVariants()}>
+        <Link
+          href={`/students/${id}/report`}
+          className={buttonVariants({ variant: "outline" })}
+        >
           Generate report
         </Link>
       </header>
@@ -152,7 +130,7 @@ export default async function StudentDetailPage({
               : "Nothing is waiting for your decision."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-2">
+        <CardContent className="flex flex-col gap-3">
           <p className="text-2xl font-semibold tabular-nums">
             {formatHours(approved)}{" "}
             <span className="text-base font-normal text-muted-foreground">
@@ -165,6 +143,31 @@ export default async function StudentDetailPage({
             max={student.required_hours}
             aria-label="Approved hours progress"
           />
+
+          {certificate ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-sm">✓ Completion certificate issued.</p>
+              <Link
+                href={`/students/${id}/certificate`}
+                className={buttonVariants({ size: "sm" })}
+              >
+                View certificate
+              </Link>
+            </div>
+          ) : reachedRequired ? (
+            <form action={issueCertificate} className="flex flex-wrap items-center gap-3">
+              <input type="hidden" name="student_id" value={id} />
+              <p className="text-sm">Required hours reached.</p>
+              <Button type="submit" size="sm">
+                Issue certificate
+              </Button>
+            </form>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              A completion certificate can be issued once the approved hours
+              reach {student.required_hours}.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -246,56 +249,11 @@ export default async function StudentDetailPage({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Change history</CardTitle>
-          <CardDescription>
-            Every decision and every change after one. Nobody can edit this
-            list.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!changes || changes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No decisions yet.
-            </p>
-          ) : (
-            <div className="overflow-x-auto rounded-[var(--radius)] border border-border">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-secondary text-xs text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">When</th>
-                    <th className="px-3 py-2 font-medium">By</th>
-                    <th className="px-3 py-2 font-medium">Day</th>
-                    <th className="px-3 py-2 font-medium">Change</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {changes.map((c) => (
-                    <tr key={c.id} className="border-t border-border">
-                      <td className="px-3 py-2 tabular-nums">
-                        {formatWhen(c.changed_at)}
-                      </td>
-                      <td className="px-3 py-2">
-                        {c.changed_by === user.id ? "You" : "Student"}
-                      </td>
-                      <td className="px-3 py-2 tabular-nums">
-                        {dateOf.get(c.entry_id) ?? "—"}
-                      </td>
-                      <td className="px-3 py-2">
-                        {describeChange(
-                          c.old_values as Snapshot,
-                          c.new_values as Snapshot,
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <ChangeHistory
+        changes={changes ?? []}
+        dateOf={dateOf}
+        userId={user.id}
+      />
     </main>
   );
 }

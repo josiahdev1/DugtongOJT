@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { UUID_RE } from "@/lib/ids";
 import {
   formatHours,
   hoursBetween,
@@ -10,9 +11,6 @@ import {
 import { PrintButton } from "./print-button";
 
 export const dynamic = "force-dynamic";
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // The report is a sheet of paper, so it uses fixed black-on-white colors
 // instead of the app theme. Otherwise a coordinator on a dark-mode laptop

@@ -8,7 +8,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
+import { describeMoa, moaStatus, needsAttention } from "@/lib/moa";
+import { todayInManila } from "@/lib/time";
 import { CompanyForm } from "./company-form";
+import { MoaForm } from "./moa-form";
+import { SupervisorsPanel } from "./supervisors-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +24,17 @@ export default async function CompaniesPage() {
 
   const { data: companies } = await supabase
     .from("companies")
-    .select("id, name, supervisor_name")
+    .select("id, name, supervisor_name, moa_signed_on, moa_expires_on")
     .order("name");
+
+  const { data: supervisors } = await supabase
+    .from("company_supervisors")
+    .select("id, company_id, email")
+    .order("email");
+  const supervisorsOf = (companyId: string) =>
+    (supervisors ?? []).filter((s) => s.company_id === companyId);
+
+  const today = todayInManila();
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8">
@@ -36,8 +49,14 @@ export default async function CompaniesPage() {
         <CardHeader>
           <CardTitle>Add a partner company</CardTitle>
           <CardDescription>
-            A company you already have a signed MOA with. Nobody else checks
-            it, so type it carefully.
+            A company you already have a signed MOA with. It becomes an
+            offline partner: an accepted partnership with no company account.
+            Nobody else checks it, so type it carefully. Companies that join
+            Dugtong appear here too once they accept a partnership on the{" "}
+            <Link href="/partnerships" className="underline underline-offset-4">
+              Partnerships page
+            </Link>
+            . The MOA dates are optional, and you can add them later.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -61,15 +80,55 @@ export default async function CompaniesPage() {
                   <tr>
                     <th className="px-3 py-2 font-medium">Company</th>
                     <th className="px-3 py-2 font-medium">Supervisor</th>
+                    <th className="px-3 py-2 font-medium">MOA</th>
+                    <th className="px-3 py-2 font-medium">Supervisor logins</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {companies.map((c) => (
-                    <tr key={c.id} className="border-t border-border">
-                      <td className="px-3 py-2">{c.name}</td>
-                      <td className="px-3 py-2">{c.supervisor_name}</td>
-                    </tr>
-                  ))}
+                  {companies.map((c) => {
+                    const status = moaStatus(c.moa_expires_on, today);
+                    return (
+                      <tr key={c.id} className="border-t border-border align-top">
+                        <td className="px-3 py-2">{c.name}</td>
+                        <td className="px-3 py-2">{c.supervisor_name}</td>
+                        <td className="px-3 py-2">
+                          <p
+                            className={
+                              needsAttention(status)
+                                ? "font-medium text-destructive"
+                                : undefined
+                            }
+                          >
+                            {needsAttention(status) ? "⚠ " : ""}
+                            {describeMoa(status)}
+                          </p>
+                          <details className="text-xs text-muted-foreground">
+                            <summary className="cursor-pointer underline underline-offset-4">
+                              Change MOA dates
+                            </summary>
+                            <MoaForm
+                              companyId={c.id}
+                              signedOn={c.moa_signed_on}
+                              expiresOn={c.moa_expires_on}
+                            />
+                          </details>
+                        </td>
+                        <td className="px-3 py-2">
+                          <details className="text-xs text-muted-foreground">
+                            <summary className="cursor-pointer underline underline-offset-4">
+                              {supervisorsOf(c.id).length === 0
+                                ? "Add a supervisor"
+                                : `${supervisorsOf(c.id).length} supervisor${supervisorsOf(c.id).length === 1 ? "" : "s"}`}
+                            </summary>
+                            <SupervisorsPanel
+                              companyId={c.id}
+                              supervisors={supervisorsOf(c.id)}
+                            />
+                          </details>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

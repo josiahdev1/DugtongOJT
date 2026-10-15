@@ -42,3 +42,6 @@ next-env.d.ts
 
 # ...but DO commit the template, it has no real values
 !.env.example
+
+# Supabase CLI scratch folder
+supabase/.temp

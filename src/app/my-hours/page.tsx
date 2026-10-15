@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,7 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getCurrentUser } from "@/lib/auth";
+import { findStudent, getCurrentUser } from "@/lib/auth";
+import { STATUS_LABEL } from "@/lib/status";
 import {
   MAX_DAYS_BACK,
   formatHours,
@@ -21,25 +23,13 @@ import { LogForm } from "./log-form";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  approved: "Approved",
-  rejected: "Rejected",
-};
-
 export default async function MyHoursPage() {
   const { user, school, supabase } = await getCurrentUser();
 
   if (!user) redirect("/login");
   if (school) redirect("/dashboard"); // coordinators have their own page
 
-  // Row Level Security hands back only THIS student's roster row (matched
-  // by their verified email). Nothing comes back for anyone not on a roster.
-  const { data: student } = await supabase
-    .from("students")
-    .select("id, name, student_no, course, company_id, required_hours")
-    .limit(1)
-    .maybeSingle();
+  const student = await findStudent(supabase);
   if (!student) redirect("/"); // not on a roster
 
   const [{ data: company }, { data: entries }] = await Promise.all([
@@ -119,6 +109,18 @@ export default async function MyHoursPage() {
           />
         </CardContent>
       </Card>
+
+      <p className="text-sm text-muted-foreground">
+        Something wrong at your placement, like being asked to do work outside
+        what was agreed?{" "}
+        <Link
+          href="/report"
+          className="font-medium text-foreground underline underline-offset-4"
+        >
+          Report a problem
+        </Link>
+        .
+      </p>
 
       <Card>
         <CardHeader>

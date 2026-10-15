@@ -39,20 +39,28 @@ log and see their own hours.
 1. **Sign in** — email and password for everyone. After sign-in,
    coordinators go to the Dashboard, students go to My hours. An email
    that is neither a coordinator nor on a roster sees a "you are not on
-   a roster" message and nothing else.
+   a roster" message. That screen also has a "Set up my school" link, so
+   a new coordinator can reach screen 2, and a note that their school may
+   still be waiting to be verified.
 2. **Set up school** (coordinator, first time only) — name the school
    once.
 3. **Dashboard** (coordinator) — table of students with company,
-   approved hours and required hours; pending-approvals count; buttons
-   for Upload roster and Add company.
+   approved / required hours and pending entries; a pending-approvals
+   count; buttons for Upload roster and Add company; a "waiting for
+   verification" notice until the team verifies the school.
 4. **Add company** (coordinator) — form for company name and supervisor
    name.
 5. **Upload roster** (coordinator) — upload a CSV (name, student ID,
-   course, email, company, required hours), preview rows, confirm.
+   course, email, company, required hours), preview rows, confirm. At
+   most 500 students and 1 MB per file. If any row is bad, nothing is
+   imported, and a table lists each problem by row number and column.
 6. **Student detail** (coordinator) — that student's time entries with
-   Approve and Reject buttons, and a Generate report button.
+   Approve and Reject buttons (a decision can be changed later), a change
+   history, and a Generate report button.
 7. **My hours** (student) — form for date, time-in and time-out; list of
-   own entries with status; total of approved hours.
+   own entries with status; total of approved hours. The date is today or
+   up to 30 days back (Philippine time), one entry per day. A rejected
+   day can be logged again to fix and resubmit it.
 8. **Hours report** — printable page for one student: student, company,
    daily approved entries, approved hours and progress toward required
    hours. The coordinator uses the browser's Save as PDF.
@@ -61,8 +69,13 @@ log and see their own hours.
 All tables have Row Level Security (RLS) on. Every record belongs to a
 school, so a second school can be added later without redoing the rules.
 
-- **schools**: name. A coordinator reads and updates their own school. Any signed-in
-  user may create a school, which then becomes theirs.
+- **schools**: name, verified. A coordinator reads their own school and
+  may rename it, but can never change `verified`; only the team can, in
+  SQL. Any signed-in user may create a school, which then becomes theirs
+  (through a database function, so they cannot attach themselves to
+  someone else's). A school's roster only works for students once the
+  school is verified. This stops a stranger from creating a school and
+  claiming a classmate's email.
 - **coordinators**: user, school. A user reads their own row. A user may
   create a row linking themselves to the school they just created, and
   no other.
@@ -72,16 +85,26 @@ school, so a second school can be added later without redoing the rules.
   (stored lowercase), company, required hours. The coordinator reads and
   writes their school's rows. A student reads only their own row,
   matched by the verified email of the signed-in session (compared in
-  lowercase), never an email sent by the browser. Students cannot write.
-- **time_entries**: student, school, work date, time-in, time-out,
-  status (pending, approved or rejected), approved by, approved at. A
-  student reads and inserts only their own entries, always as pending,
-  and may edit them only while pending. Only that school's coordinator
-  may change status. Once approved, a student cannot edit the entry.
-- **time_entry_changes** (audit log): entry, changed by, changed at, old
-  values, new values. Filled automatically by the database whenever an
-  entry changes after approval. The coordinator reads their school's
-  rows. Nobody writes to it directly.
+  lowercase), never an email sent by the browser, and only in a verified
+  school. Students cannot write. If the same email is on two rosters, the
+  oldest roster row is always the one used.
+- **time_entries**: student, school (filled in by the database), work
+  date, time-in, time-out, status (pending, approved or rejected),
+  approved by, approved at. A student reads and inserts only their own
+  entries, always as pending. A student may edit an entry while it is
+  pending, or fix a rejected one, which sends it back to pending. Once
+  approved, a student cannot edit it. Only that school's coordinator may
+  approve or reject, and may change a decision later. A coordinator
+  cannot change the date or times, or send an entry back to pending. The
+  database stamps "approved by" and "approved at"; the browser cannot.
+- **time_entry_changes** (audit log): entry, school, changed by, changed
+  at, old values, new values. Filled automatically by the database for
+  every decision and every change after one. The coordinator reads their
+  school's rows. Nobody writes to it directly.
+- **student_hours** (a view, not a table): each student's approved hours
+  and pending count, added up by the database and limited by the same
+  Row Level Security as the tables it reads. The Dashboard and the report
+  use it.
 
 Students are added only through the coordinator's roster upload. An
 email that is not on a roster sees and logs nothing.
@@ -96,6 +119,8 @@ never used: accounts are never created from the roster upload.
 ## Done for the demo
 On the LIVE Vercel URL:
 - [ ] A coordinator can sign up, confirm email, sign in and name a school.
+- [ ] An admin has verified the demo school on the Admin screen (see the
+      README), or the students cannot sign in.
 - [ ] The coordinator adds one partner company.
 - [ ] The coordinator uploads a CSV of 5 fake students and sees them on
       the Dashboard, assigned to the company.
@@ -106,20 +131,147 @@ On the LIVE Vercel URL:
 - [ ] The coordinator opens the hours report and saves it as PDF.
 - [ ] A student cannot see another student's data, and an email not on
       a roster sees nothing.
-- [ ] All demo students are clearly labelled sample data.
+- [ ] All demo students are clearly labelled sample data (the sample CSV
+      names them "Sample Student N"; the app does not enforce this).
 - [ ] RLS is on for every table, and no secret key is in the project.
 
+## Added after the MVP
+Built from the LATER list once the MVP worked. The three-minute demo does
+not need either of these.
+
+- **Completion certificate** (ticket 08). On a student's page, once their
+  approved hours reach their required hours, the coordinator can issue a
+  certificate. New table **certificates**: student, school, issued by,
+  hours completed, required hours, issued at. The database adds up the
+  approved hours itself and refuses to create a certificate below the
+  requirement, sets who issued it and when, and allows one per student.
+  Only that school's coordinator can read or issue one. An issued
+  certificate cannot be edited or deleted, and it is not changed if an
+  approval is revoked later. The certificate page shows only these stored
+  values and prints to PDF like the hours report.
+- **MOA dates** (ticket 09). Each company has an optional "MOA signed" and
+  "MOA expires" date (new columns on **companies**; the expiry must be
+  after the signing date). The Companies page shows each MOA as no dates,
+  valid, expiring in N days (within 30 days) or expired, and the
+  Dashboard warns when any MOA needs attention. The coordinator can add or
+  change the dates at any time. Same access as the rest of **companies**.
+
+- **Admins and school verification** (ticket 16). The team's members are
+  listed in an `admins` table (edited in SQL; nobody can read or change it
+  through the app). An admin signs in to an **Admin** screen that lists
+  every school with its coordinator's email, student and company counts,
+  and a Verify / Remove verification button. The database functions behind
+  it check for an admin themselves, so no one else can use them.
+
+- **Supervisor approval** (ticket 10; team decision: the supervisor
+  approves, the coordinator can override). On a company's row on the
+  Companies page, the coordinator adds supervisors by email (new table
+  **company_supervisors**: school, company, email in lowercase; only that
+  school's coordinator reads, adds and removes). A supervisor signs up
+  with that email, confirms it, and is matched by the verified email of
+  their login, only in a verified school. They land on a **Supervisor**
+  screen with the entries waiting for approval and their students' hours.
+  A supervisor sees only the time entries of students at their own
+  company; they never read the students table (so never see emails) and
+  get name, ID, course, hours and company through a database function.
+  They can approve or reject, never change dates or times, never send an
+  entry back to pending, and cannot approve their own hours if they are
+  also a student. The database stamps who decided and when. A coordinator
+  can still change any decision. The change history now records whether
+  a coordinator, supervisor or student made each change.
+
+- **Misuse reports** (ticket 11; team decisions). New table **reports**:
+  student, school and company (both filled in by the database from the
+  roster), type (work outside the agreed tasks, unsafe conditions, or
+  unrecorded overtime), the day it happened (today or up to 90 days
+  back), a description of 10 to 2000 characters, status, who decided and
+  when. Statuses: `submitted`, `upheld`, `not_upheld`, and no others. A
+  student files from a "Report a problem" page linked on My hours and sees
+  only their own reports. The school coordinator sees every report for
+  their school, including who filed it, and is the only one who can move
+  it from submitted to upheld or not upheld. The decision is final; there
+  is no escalation to an admin. A supervisor sees a report only after it
+  is upheld, only for their own company, through a database function that
+  never returns the student. A report that is not upheld is never shown to
+  the company.
+
+- **Company accounts and verification** (ticket 13; team decisions). A
+  user can set up a company account from the "not on a roster" screen. New
+  table **employers** (named "employers" to keep them apart from the
+  school-side **companies** a coordinator types in): owner, name, the
+  authorized representative's name and position, and a status of
+  `pending`, `verified` or `rejected`, starting at pending. Only the owner
+  can read their row, and a company account is created through a database
+  function. The status is changed only by an admin through a database
+  function. New table **employer_documents**: which file is the company's
+  DTI or SEC registration (`registration`) or mayor's or business permit
+  (`permit`). No ID is collected. The files live in a private storage
+  bucket, `employer-documents`: PDF, JPEG or PNG, up to 5 MB, each company
+  able to write and read only inside a folder named after itself. Nothing
+  is ever public. A document opens only through a link that lasts 60
+  seconds, made for the owning company or an admin. The Admin screen lists
+  companies, waiting ones first, with the owner's email, the
+  representative and both documents, and lets an admin verify, reject or
+  send a company back to waiting. The document list is still to be
+  confirmed against CHED and the pilot school's requirements.
+
+- **Company listings** (ticket 14; team decisions). A verified company
+  posts OJT openings from its Company screen. New table **listings**:
+  company, course, slots, required hours, schedule, hours per day, city or
+  municipality, an optional role title, scope of tasks, and a status of
+  `draft`, `published` or `closed`. The course comes from a fixed list in
+  a **courses** table (a starter list of 14 common programs, still to be
+  confirmed with the pilot school, changed in SQL). A listing cannot leave
+  draft without a scope of tasks (at least 20 characters), only a verified
+  company can publish, and a published listing cannot go back to draft.
+  A company reads and edits only its own listings. Visitors never touch
+  the listings table. A public page at `/listings`, open without signing
+  in, reads a view that shows only published listings of verified
+  companies, and only the agreed public fields: company name, a verified
+  label, course, slots, required hours, schedule and hours per day, scope
+  of tasks, city, and the optional role title. Contact details, documents,
+  internal notes, students and trust scores are never public. Visitors can
+  filter by course and by "at least this many required hours". A listing
+  leaves the page when it is closed or its company stops being verified.
+  Editing an existing listing is not built: a company closes it and posts
+  a new one.
+
+- **Partnerships** (ticket 15; team decisions). New table
+  **partnerships**: the school, the company (empty for an offline partner),
+  whether it is offline, who started it (school or company), a status of
+  `requested`, `accepted` or `declined` and no others, and the school's
+  placement company it produced. It cannot be read or changed directly;
+  each side uses database functions that show it only its own. A company
+  the coordinator types in is an **offline partner**: a partnership created
+  directly as accepted, marked offline, with no company account, based on a
+  signed MOA the school already holds (every company that existed before
+  this feature was backfilled the same way). A **platform partnership**
+  starts when either a coordinator at a verified school asks a verified
+  company (from the public openings page) or a verified company asks a
+  verified school (from its Company screen). Only the side that received
+  the request can accept or decline it, so a sender can never answer their
+  own request; an answered request is final and a pair cannot ask twice.
+  Accepting creates the school's placement company for that partner (with
+  "(platform)" added to the name if the coordinator already typed in a
+  company with the same name). Every company in `companies` now has an
+  accepted partnership behind it, and the database refuses to assign a
+  student to a company without one. A coordinator can no longer set a
+  company's link to a platform company or edit anything on a company but
+  its MOA dates. Coordinators have a **Partnerships** page (requests from
+  companies, requests they sent, platform partners, offline partners).
+  Linking an offline partner to the same company when it later joins the
+  platform is not built.
+
 ## Out of scope
-- Marketplace connecting schools to companies, and company OJT listings
-- Company verification and partnership requests
-- Misuse reporting
-- MOA management and expiry alerts
-- Supervisor logins and supervisor approval of hours
+- Editing a listing after it is posted, and matching students to listings or applying through the app
+- Linking an offline partner to the same company when it later joins the platform
+- Escalating a misuse report to a Dugtong admin, and a company's right to appeal an upheld report
+- Storing the signed MOA document itself (only its dates are tracked)
 - Evaluation rating and the school's evaluation form
-- Completion certificate
 - Onboarding more than one school
 - Server-side PDF generation (the report is printed to PDF from the
   browser)
 
-Deliberate cuts from the proposal: the coordinator, not a supervisor,
-approves hours, and there is no evaluation rating.
+Deliberate cuts from the proposal: there is no evaluation rating. (The
+MVP had the coordinator approving hours; supervisor approval was added
+afterwards, see "Added after the MVP".)

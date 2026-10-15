@@ -9,7 +9,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
-import { formatHours } from "@/lib/time";
+import { MOA_WARNING_DAYS, moaStatus, needsAttention } from "@/lib/moa";
+import { formatHours, todayInManila } from "@/lib/time";
 import { signOut } from "../login/actions";
 
 export const dynamic = "force-dynamic";
@@ -26,17 +27,26 @@ export default async function DashboardPage({
 
   const { imported } = await searchParams;
 
-  const [{ data: students }, { data: companies }, { data: totals }] =
-    await Promise.all([
+  const [
+    { data: students },
+    { data: companies },
+    { data: totals },
+    { count: reportsWaiting },
+  ] = await Promise.all([
       supabase
         .from("students")
         .select("id, name, student_no, course, company_id, required_hours")
         .order("name"),
-      supabase.from("companies").select("id, name"),
+      supabase.from("companies").select("id, name, moa_expires_on"),
       // Approved hours and pending counts, added up by the database.
       supabase
         .from("student_hours")
         .select("student_id, approved_hours, pending_count"),
+      // Misuse reports still waiting for this coordinator's decision.
+      supabase
+        .from("reports")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "submitted"),
     ]);
   const companyName = new Map((companies ?? []).map((c) => [c.id, c.name]));
   const hoursOf = new Map(
@@ -45,6 +55,17 @@ export default async function DashboardPage({
       { approved: Number(t.approved_hours), pending: Number(t.pending_count) },
     ]),
   );
+  // Requests from companies that are waiting for this coordinator's answer.
+  const { data: partnershipData } = await supabase.rpc("school_partnerships");
+  const partnershipRequests = (
+    (partnershipData ?? []) as { status: string; requested_by: string | null }[]
+  ).filter((p) => p.status === "requested" && p.requested_by === "employer").length;
+
+  // Companies whose MOA has expired or runs out within 30 days.
+  const today = todayInManila();
+  const moaAlerts = (companies ?? []).filter((c) =>
+    needsAttention(moaStatus(c.moa_expires_on, today)),
+  ).length;
   const totalPending = (totals ?? []).reduce(
     (sum, t) => sum + Number(t.pending_count),
     0,
@@ -68,12 +89,47 @@ export default async function DashboardPage({
         </form>
       </header>
 
+      {!school.verified && (
+        <p
+          role="status"
+          className="rounded-[var(--radius)] border border-border bg-secondary p-3 text-sm"
+        >
+          <span className="font-medium">Waiting for verification.</span> You
+          can add companies and upload your roster now, but students cannot
+          sign in until the Dugtong team verifies your school.
+        </p>
+      )}
+
+      {moaAlerts > 0 && (
+        <p
+          role="status"
+          className="rounded-[var(--radius)] border border-destructive p-3 text-sm"
+        >
+          <span className="font-medium">
+            ⚠ {moaAlerts} {moaAlerts === 1 ? "MOA needs" : "MOAs need"} attention.
+          </span>{" "}
+          Expired or expiring within {MOA_WARNING_DAYS} days.{" "}
+          <Link
+            href="/companies"
+            className="font-medium underline underline-offset-4"
+          >
+            Review on the Companies page
+          </Link>
+        </p>
+      )}
+
       <div className="flex flex-wrap gap-3">
         <Link href="/companies" className={buttonVariants({ variant: "outline" })}>
           Add company
         </Link>
         <Link href="/roster/upload" className={buttonVariants()}>
           Upload roster
+        </Link>
+        <Link href="/partnerships" className={buttonVariants({ variant: "outline" })}>
+          Partnerships{partnershipRequests ? ` (${partnershipRequests} waiting)` : ""}
+        </Link>
+        <Link href="/reports" className={buttonVariants({ variant: "outline" })}>
+          Reports{reportsWaiting ? ` (${reportsWaiting} waiting)` : ""}
         </Link>
       </div>
 

@@ -3,9 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { UUID_RE } from "@/lib/ids";
 
 // The coordinator approves or rejects one time entry.
 //
@@ -45,4 +43,34 @@ export async function decideEntry(formData: FormData) {
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/dashboard");
   redirect(`/students/${studentId}`);
+}
+
+// The coordinator issues a student's completion certificate.
+//
+// The page only shows the button once the hours are reached, but that is
+// a convenience. The database is the real gate: it adds up the approved
+// hours itself and refuses to create the certificate otherwise.
+export async function issueCertificate(formData: FormData) {
+  const studentId = String(formData.get("student_id") ?? "");
+  if (!UUID_RE.test(studentId)) redirect("/dashboard");
+
+  const { supabase, school } = await getCurrentUser();
+  if (!school) redirect("/");
+
+  const { error } = await supabase
+    .from("certificates")
+    .insert({ student_id: studentId });
+
+  // 23505 = a certificate already exists; just show it.
+  if (error && error.code !== "23505") {
+    const message = encodeURIComponent(
+      error.message.includes("required hours")
+        ? "This student has not reached the required hours yet."
+        : "Could not issue the certificate. Please try again.",
+    );
+    redirect(`/students/${studentId}?error=${message}`);
+  }
+
+  revalidatePath(`/students/${studentId}`);
+  redirect(`/students/${studentId}/certificate`);
 }
