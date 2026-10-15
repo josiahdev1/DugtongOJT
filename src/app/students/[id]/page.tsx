@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -121,15 +121,20 @@ export default async function StudentDetailPage({
         ← Dashboard
       </Link>
 
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {student.name}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {student.course} · {company?.name ?? "No company"} ·{" "}
-          <span className="font-mono text-xs">{student.student_no}</span> ·{" "}
-          {student.email}
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {student.name}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {student.course} · {company?.name ?? "No company"} ·{" "}
+            <span className="font-mono text-xs">{student.student_no}</span> ·{" "}
+            {student.email}
+          </p>
+        </div>
+        <Link href={`/students/${id}/report`} className={buttonVariants()}>
+          Generate report
+        </Link>
       </header>
 
       {error && (
