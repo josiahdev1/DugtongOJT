@@ -4,9 +4,9 @@
 
 **Blocked by:** None
 
-**Status:** todo
+**Status:** done
 
-- [ ] The project is connected to Vercel and every push to `main` deploys
-- [ ] The live URL opens on a phone and shows the starter page
-- [ ] The live URL is at the top of `README.md`
-- [ ] Works on the live URL
+- [x] The project is connected to Vercel and every push to `main` deploys
+- [x] The live URL opens on a phone and shows the starter page
+- [x] The live URL is at the top of `README.md`
+- [x] Works on the live URL
