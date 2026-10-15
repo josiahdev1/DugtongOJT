@@ -34,6 +34,10 @@ export default async function Home() {
   const student = await findStudent(supabase);
   if (student) redirect("/my-hours");
 
+  // A company account goes to the company screen.
+  const { data: isEmployer } = await supabase.rpc("is_employer");
+  if (isEmployer) redirect("/company");
+
   // Members of the Dugtong team go to the admin screen.
   const { data: isAdmin } = await supabase.rpc("is_admin");
   if (isAdmin) redirect("/admin");
@@ -52,13 +56,19 @@ export default async function Home() {
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="text-sm text-muted-foreground">
-            Are you an OJT coordinator instead?
+            Are you an OJT coordinator, or a company that hosts students?
           </p>
           <Link
             href="/setup-school"
             className={buttonVariants({ variant: "outline" })}
           >
             Set up my school
+          </Link>
+          <Link
+            href="/company/setup"
+            className={buttonVariants({ variant: "outline" })}
+          >
+            Set up my company
           </Link>
           <form action={signOut}>
             <Button type="submit" variant="ghost" className="w-full">

@@ -52,3 +52,15 @@ export async function findStudent(supabase: Supabase) {
     .maybeSingle();
   return data;
 }
+
+// The signed-in user's company account (an "employer"), or null.
+// Row Level Security returns only the row the user owns.
+export async function findEmployer(supabase: Supabase) {
+  const { data } = await supabase
+    .from("employers")
+    .select(
+      "id, name, representative_name, representative_position, status, created_at",
+    )
+    .maybeSingle();
+  return data;
+}

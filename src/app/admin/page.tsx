@@ -10,6 +10,11 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { signOut } from "../login/actions";
 import { setSchoolVerified } from "./actions";
+import {
+  EmployersCard,
+  type DocumentRow,
+  type EmployerRow,
+} from "./employers-card";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +48,15 @@ export default async function AdminPage({
   const schools = (data ?? []) as SchoolRow[];
   const waiting = schools.filter((s) => !s.verified).length;
 
+  const { data: employerData } = await supabase.rpc("admin_list_employers");
+  const employers = (employerData ?? []) as EmployerRow[];
+  const { data: documentData } = await supabase
+    .from("employer_documents")
+    .select("id, employer_id, kind, file_name, created_at")
+    .order("created_at", { ascending: false });
+  const documents = (documentData ?? []) as DocumentRow[];
+  const companiesWaiting = employers.filter((e) => e.status === "pending").length;
+
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
@@ -54,7 +68,10 @@ export default async function AdminPage({
             {user.email} ·{" "}
             {waiting === 0
               ? "No schools waiting."
-              : `${waiting} ${waiting === 1 ? "school is" : "schools are"} waiting for verification.`}
+              : `${waiting} ${waiting === 1 ? "school is" : "schools are"} waiting for verification.`}{" "}
+            {companiesWaiting === 0
+              ? "No companies waiting."
+              : `${companiesWaiting} ${companiesWaiting === 1 ? "company is" : "companies are"} waiting for review.`}
           </p>
         </div>
         <form action={signOut}>
@@ -138,6 +155,8 @@ export default async function AdminPage({
           )}
         </CardContent>
       </Card>
+
+      <EmployersCard employers={employers} documents={documents} />
     </main>
   );
 }

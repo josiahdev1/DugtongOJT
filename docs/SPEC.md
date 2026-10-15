@@ -195,6 +195,26 @@ not need either of these.
   never returns the student. A report that is not upheld is never shown to
   the company.
 
+- **Company accounts and verification** (ticket 13; team decisions). A
+  user can set up a company account from the "not on a roster" screen. New
+  table **employers** (named "employers" to keep them apart from the
+  school-side **companies** a coordinator types in): owner, name, the
+  authorized representative's name and position, and a status of
+  `pending`, `verified` or `rejected`, starting at pending. Only the owner
+  can read their row, and a company account is created through a database
+  function. The status is changed only by an admin through a database
+  function. New table **employer_documents**: which file is the company's
+  DTI or SEC registration (`registration`) or mayor's or business permit
+  (`permit`). No ID is collected. The files live in a private storage
+  bucket, `employer-documents`: PDF, JPEG or PNG, up to 5 MB, each company
+  able to write and read only inside a folder named after itself. Nothing
+  is ever public. A document opens only through a link that lasts 60
+  seconds, made for the owning company or an admin. The Admin screen lists
+  companies, waiting ones first, with the owner's email, the
+  representative and both documents, and lets an admin verify, reject or
+  send a company back to waiting. The document list is still to be
+  confirmed against CHED and the pilot school's requirements.
+
 ## Out of scope
 - Marketplace connecting schools to companies, and company OJT listings
 - Company verification and partnership requests
