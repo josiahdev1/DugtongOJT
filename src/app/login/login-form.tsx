@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MIN_PASSWORD_LENGTH } from "@/lib/password";
 import { authenticate } from "./actions";
 
 export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" | "signup" }) {
@@ -39,12 +40,12 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
           name="password"
           type="password"
           autoComplete={mode === "signin" ? "current-password" : "new-password"}
-          minLength={8}
+          minLength={mode === "signup" ? MIN_PASSWORD_LENGTH : undefined}
           required
         />
         {mode === "signup" && (
           <p className="text-xs text-muted-foreground">
-            At least 8 characters.
+            At least {MIN_PASSWORD_LENGTH} characters. Avoid common passwords.
           </p>
         )}
       </div>

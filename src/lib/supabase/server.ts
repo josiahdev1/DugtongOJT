@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { authCookieOptions } from "@/lib/supabase/cookie-options";
 
 /**
  * Supabase client for SERVER code — server components, route handlers,
@@ -24,6 +25,7 @@ export async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient(url, anonKey, {
+    cookieOptions: authCookieOptions,
     cookies: {
       getAll() {
         return cookieStore.getAll();

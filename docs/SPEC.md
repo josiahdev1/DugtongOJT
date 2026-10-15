@@ -22,8 +22,8 @@ log and see their own hours.
    students and records are mine alone.
 2. As a coordinator, I want to add a partner company, so that I can
    assign students to it.
-3. As a coordinator, I want to upload a CSV roster and preview it before
-   confirming, so that I don't type in hundreds of students by hand.
+3. As a coordinator, I want to upload an Excel or CSV roster and preview
+   it before confirming, so that I don't type in hundreds of students by hand.
 4. As a student, I want to log my time-in and time-out for a day, so
    that my hours are recorded without paper.
 5. As a coordinator, I want to approve or reject each time entry, so
@@ -50,10 +50,15 @@ log and see their own hours.
    verification" notice until the team verifies the school.
 4. **Add company** (coordinator) — form for company name and supervisor
    name.
-5. **Upload roster** (coordinator) — upload a CSV (name, student ID,
-   course, email, company, required hours), preview rows, confirm. At
-   most 500 students and 1 MB per file. If any row is bad, nothing is
-   imported, and a table lists each problem by row number and column.
+5. **Upload roster** (coordinator) — upload an Excel (.xlsx) or CSV file
+   (name, student ID, course, email, company, required hours; the Excel
+   headers are STUDENT NAME, STUDENT ID, COURSE, EMAIL, COMPANY, REQUIRED
+   HOURS and other columns such as gender and section are ignored), preview
+   rows, confirm. An Excel file may have several tabs (one per section);
+   all tabs are read together. At most 500 students in total and 1 MB per
+   file. If any row is bad, nothing is imported, and a table lists each
+   problem by row number and column (and by tab name when there are
+   several tabs). A blank Excel template can be downloaded from the page.
 6. **Student detail** (coordinator) — that student's time entries with
    Approve and Reject buttons (a decision can be changed later), a change
    history, and a Generate report button.
@@ -73,7 +78,8 @@ school, so a second school can be added later without redoing the rules.
   may rename it, but can never change `verified`; only the team can, in
   SQL. Any signed-in user may create a school, which then becomes theirs
   (through a database function, so they cannot attach themselves to
-  someone else's). A school's roster only works for students once the
+  someone else's), unless their email is on a student roster or they are
+  a company owner or a supervisor (supabase/sql/024). A school's roster only works for students once the
   school is verified. This stops a stranger from creating a school and
   claiming a classmate's email.
 - **coordinators**: user, school. A user reads their own row. A user may
@@ -113,8 +119,14 @@ email that is not on a roster sees and logs nothing.
 Yes. Supabase Auth, email and password, with **email confirmation
 turned on** so a student must prove they own the email before it can
 match a roster row. Anyone can create an empty account, but without a
-coordinator or roster match it can see nothing. The service-role key is
-never used: accounts are never created from the roster upload.
+coordinator or roster match it can see nothing. New passwords need at
+least 10 characters, must not be a common password or only numbers, and
+must not contain the email name; existing accounts can still sign in.
+The service-role key is never used: accounts are never created from the
+roster upload. A Privacy Notice (/privacy, RA 10173) and Terms of Use
+(/terms) are public pages, linked from the landing page footer and shown
+on the sign-up form. Every response carries security headers (content
+security policy, no framing, HTTPS-only in production).
 
 ## Done for the demo
 On the LIVE Vercel URL:
@@ -122,7 +134,7 @@ On the LIVE Vercel URL:
 - [ ] An admin has verified the demo school on the Admin screen (see the
       README), or the students cannot sign in.
 - [ ] The coordinator adds one partner company.
-- [ ] The coordinator uploads a CSV of 5 fake students and sees them on
+- [ ] The coordinator uploads an Excel or CSV file of 5 fake students and sees them on
       the Dashboard, assigned to the company.
 - [ ] A rostered student signs in, logs one day's time-in and time-out
       and sees it as pending.

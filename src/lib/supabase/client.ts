@@ -1,4 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { authCookieOptions } from "@/lib/supabase/cookie-options";
 
 /**
  * Supabase client for BROWSER code — anything in a file with "use client".
@@ -20,5 +21,5 @@ export function createClient() {
     );
   }
 
-  return createBrowserClient(url, anonKey);
+  return createBrowserClient(url, anonKey, { cookieOptions: authCookieOptions });
 }

@@ -22,10 +22,19 @@ export async function createSchool(
     school_name: name,
   });
   if (error) {
+    // The database refuses some people on purpose (see supabase/sql/024).
+    // Say why in plain words instead of "try again", which would not help.
+    const m = error.message;
     return {
-      error: error.message.includes("already belong")
+      error: m.includes("already belong")
         ? "You already have a school."
-        : "Could not create the school. Please try again.",
+        : m.includes("student roster")
+          ? "This email is on a school's student roster, so it signs in as a student and cannot create a school."
+          : m.includes("company account")
+            ? "This is a company account, so it cannot create a school."
+            : m.includes("supervisor account")
+              ? "This is a supervisor account, so it cannot create a school."
+              : "Could not create the school. Please try again.",
     };
   }
 

@@ -72,8 +72,14 @@ export default function PrivacyPage() {
           evaluation. They do not see your email address.
         </li>
         <li>
-          <strong>Dugtong OJT administrators</strong> see what they need to
-          verify schools and companies and to review escalated reports.
+          <strong>A company you apply to</strong> sees your name, student ID,
+          course, school and the note you wrote with your application. They
+          do not see your email address.
+        </li>
+        <li>
+          <strong>Dugtong OJT administrators</strong> see the details schools
+          and companies submit so they can be verified (including uploaded
+          documents), and the reports and appeals escalated to them.
         </li>
         <li>
           <strong>The public</strong> sees only the OJT openings that a
