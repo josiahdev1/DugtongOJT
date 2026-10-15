@@ -25,6 +25,16 @@ alter table schools
 revoke update on schools from authenticated;
 grant update (name) on schools to authenticated;
 
+-- A second layer for the same rule: signed-in users have no INSERT policy
+-- on these tables (Row Level Security already refuses), and now no INSERT
+-- or DELETE right either. The ONLY way a school or coordinator row is
+-- created is the create_school function, which runs with the table
+-- owner's rights and always leaves `verified` false. So even a policy
+-- added by mistake later could not let someone insert a pre-verified
+-- school.
+revoke insert, delete on schools from authenticated;
+revoke insert, delete on coordinators from authenticated;
+
 -- To verify a school (team only, in the SQL Editor or the CLI):
 --   update schools set verified = true where id = '<school id>';
 -- To find the id:
