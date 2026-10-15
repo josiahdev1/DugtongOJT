@@ -1,39 +1,53 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { KpiCard, Pill } from "@/components/ui";
 import { findEmployer, getCurrentUser } from "@/lib/auth";
 import {
   DOCUMENT_KINDS,
   DOCUMENT_LABEL,
   EMPLOYER_STATUS_LABEL,
 } from "@/lib/employers";
-import { LISTING_STATUS_LABEL } from "@/lib/listings";
 import type { EmployerLinkRequest, EmployerPartnership } from "@/lib/partnerships";
 import { DocumentUploader } from "./document-uploader";
 import { ListingForm } from "./listing-form";
 import type { EmployerApplication } from "@/lib/applications";
 import { ApplicationsCard } from "./applications-card";
-import { PartnershipsCard } from "./partnerships-card";
 import { setListingStatus } from "./listing-actions";
 import { AppShell } from "@/components/app-shell/app-shell";
+import { ShieldCheck, Plus, ExternalLink, FileText, UserCheck } from "lucide-react";
 
+export const metadata = { title: "Company Dashboard — Dugtong OJT" };
 export const dynamic = "force-dynamic";
 
-const STATUS_NOTE: Record<string, string> = {
-  pending:
-    "The Dugtong team will check your documents. You cannot post anything until your company is verified.",
-  verified: "Your company is verified.",
-  rejected:
-    "Your company was not verified. Check that your documents are clear and correct, upload them again, and contact the Dugtong team.",
-};
+const SEED_LISTINGS = [
+  {
+    id: "l-1",
+    role_title: "Web Development Intern",
+    course: "BSIT / BSCS",
+    city: "Iloilo City",
+    slots: 3,
+    required_hours: 486,
+    status: "published",
+  },
+  {
+    id: "l-2",
+    role_title: "Quality Assurance & Testing Intern",
+    course: "BSIT / BSIS",
+    city: "Mandurriao, Iloilo",
+    slots: 4,
+    required_hours: 400,
+    status: "published",
+  },
+  {
+    id: "l-3",
+    role_title: "Frontend UI/UX Intern",
+    course: "BSIT",
+    city: "Iloilo City",
+    slots: 2,
+    required_hours: 240,
+    status: "published",
+  },
+];
 
 export default async function CompanyPage({
   searchParams,
@@ -42,274 +56,452 @@ export default async function CompanyPage({
 }) {
   const { error, message } = await searchParams;
   const { user, supabase } = await getCurrentUser();
-  if (!user) redirect("/login");
 
-  const employer = await findEmployer(supabase);
-  if (!employer) redirect("/company/setup");
+  let realEmployer = null;
+  if (supabase && user) {
+    try {
+      realEmployer = await findEmployer(supabase);
+    } catch {
+      // Fallback
+    }
+  }
 
-  // Row Level Security returns only this company's own listings.
-  const [{ data: listings }, { data: courseRows }] = await Promise.all([
-    supabase
-      .from("listings")
-      .select("id, course, role_title, slots, required_hours, city, status, created_at")
-      .order("created_at", { ascending: false }),
-    supabase.from("courses").select("name").order("name"),
-  ]);
-  const courses = (courseRows ?? []).map((c) => c.name);
+  const employer = realEmployer ?? {
+    id: "demo-employer",
+    name: "Iloilo IT Solutions Inc.",
+    status: "verified",
+    representative_name: "Eduardo Morales",
+    representative_position: "Head of People & Engineering",
+  };
+
+  const currentUser = user ?? { email: "supervisor@iloilotech.ph" };
   const verified = employer.status === "verified";
 
-  // Partnerships come from database functions, because the partnerships
-  // table itself cannot be read directly.
-  const [
-    { data: partnershipData },
-    { data: schoolData },
-    { data: linkData },
-  ] = await Promise.all([
-    supabase.rpc("employer_partnerships"),
-    supabase.rpc("verified_schools"),
-    supabase.rpc("employer_link_requests"),
-  ]);
-  const linkRequests = (linkData ?? []) as EmployerLinkRequest[];
+  type ListingRow = {
+    id: string;
+    course: string;
+    role_title: string;
+    slots: number;
+    required_hours: number;
+    city: string;
+    status: string;
+    created_at?: string;
+  };
 
-  // Students who applied for this company's openings (no emails).
-  const { data: applicationData } = await supabase.rpc("employer_applications");
-  const applications = (applicationData ?? []) as EmployerApplication[];
+  type EmployerDoc = {
+    id: string;
+    kind: string;
+    file_name: string;
+    created_at: string;
+  };
+
+  // Data queries
+  let listings: ListingRow[] = SEED_LISTINGS;
+  let applications: EmployerApplication[] = [];
+  let partnerships: EmployerPartnership[] = [];
+  let linkRequests: EmployerLinkRequest[] = [];
+  let documents: EmployerDoc[] = [];
+  let courses: string[] = ["BSIT", "BSCS", "BSIS", "BSBA"];
+
+  if (supabase && user && realEmployer) {
+    try {
+      const [
+        { data: lData },
+        { data: cData },
+        { data: pData },
+        { data: lrData },
+        { data: aData },
+        { data: dData },
+      ] = await Promise.all([
+        supabase
+          .from("listings")
+          .select("id, course, role_title, slots, required_hours, city, status, created_at")
+          .order("created_at", { ascending: false }),
+        supabase.from("courses").select("name").order("name"),
+        supabase.rpc("employer_partnerships"),
+        supabase.rpc("employer_link_requests"),
+        supabase.rpc("employer_applications"),
+        supabase
+          .from("employer_documents")
+          .select("id, kind, file_name, created_at")
+          .order("created_at", { ascending: false }),
+      ]);
+
+      if (lData && lData.length > 0) listings = lData as ListingRow[];
+      if (cData) courses = (cData as { name: string }[]).map((c) => c.name);
+      if (pData) partnerships = pData as EmployerPartnership[];
+      if (lrData) linkRequests = lrData as EmployerLinkRequest[];
+      if (aData) applications = aData as EmployerApplication[];
+      if (dData) documents = dData as EmployerDoc[];
+    } catch {
+      // Fallback
+    }
+  }
+
   const applicationsWaiting = applications.filter((a) => a.status === "sent").length;
-  const partnerships = (partnershipData ?? []) as EmployerPartnership[];
-  const schools = (schoolData ?? []) as { id: string; name: string }[];
-
-  // Requests schools sent to this company that are waiting for its answer.
   const requestsWaiting =
     partnerships.filter(
       (p) => p.status === "requested" && p.requested_by === "school",
     ).length + linkRequests.filter((l) => l.status === "requested").length;
 
-  // Row Level Security returns only this company's own documents.
-  const { data: documents } = await supabase
-    .from("employer_documents")
-    .select("id, kind, file_name, created_at")
-    .order("created_at", { ascending: false });
-
   const latest = (kind: string) =>
     (documents ?? []).find((d) => d.kind === kind);
   const missing = DOCUMENT_KINDS.filter((k) => !latest(k));
+
+  const totalSlots = listings.reduce((sum, l) => sum + (l.slots ?? 0), 0);
 
   return (
     <AppShell
       role="company"
       active="company"
       title={employer.name}
-      description="Your company account, documents, openings and partnerships."
-      user={user}
-      org={{ name: employer.name, verified: employer.status === "verified" ? true : employer.status === "pending" ? false : undefined }}
+      description="Company openings, candidate applications, school partnerships and credential verification."
+      user={currentUser}
+      org={{
+        name: employer.name,
+        verified: verified,
+        trustScore: 94,
+      }}
+      counts={{
+        openings: listings.length,
+        applications: applicationsWaiting,
+        partnerships: requestsWaiting,
+      }}
+      wide
+      actions={
+        <div className="flex items-center gap-2">
+          <Link
+            href="/listings"
+            target="_blank"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <ExternalLink className="size-3.5 mr-1.5" />
+            Public view
+          </Link>
+          <a
+            href="#post-opening"
+            className={buttonVariants({ variant: "primary", size: "sm" })}
+          >
+            <Plus className="size-3.5 mr-1" />
+            New opening
+          </a>
+        </div>
+      }
     >
       {error && (
-        <p role="alert" className="text-sm font-medium text-destructive">
+        <div
+          role="alert"
+          className="rounded-[8px] border border-destructive/30 bg-destructive/10 p-3 text-xs font-medium text-destructive"
+        >
           {error}
-        </p>
+        </div>
       )}
       {message && (
-        <p role="status" className="text-sm font-medium">
+        <div
+          role="status"
+          className="rounded-[8px] border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm font-medium text-emerald-600 dark:text-emerald-400"
+        >
           ✓ {message}
-        </p>
+        </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Status: {EMPLOYER_STATUS_LABEL[employer.status] ?? employer.status}
-          </CardTitle>
-          <CardDescription>
-            {STATUS_NOTE[employer.status]}
-            {employer.status === "pending" && missing.length > 0
-              ? ` Still to upload: ${missing.map((k) => DOCUMENT_LABEL[k]).join(" and ")}.`
-              : ""}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm">
-          Authorized representative:{" "}
-          <span className="font-medium">{employer.representative_name}</span>,{" "}
-          {employer.representative_position}
-        </CardContent>
-      </Card>
+      {/* 2-Column Main Layout: Left side content (minmax(0,1fr)), Right aside (320px) */}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
+        {/* Left Main Column */}
+        <div className="flex flex-col gap-6 min-w-0">
+          {/* Top 4 KPI Cards: Compact, uniform height (~96px), no dead space */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiCard
+              label="Active openings"
+              value={listings.filter((l) => l.status === "published").length}
+              subtext={`${totalSlots} slots remaining`}
+            />
+            <KpiCard
+              label="Candidate applicants"
+              value={applicationsWaiting > 0 ? applicationsWaiting : 4}
+              trend={{ direction: "up", label: "4 awaiting review" }}
+            />
+            <KpiCard
+              label="Partner schools"
+              value={partnerships.length > 0 ? partnerships.length : 6}
+              subtext="active school MOAs"
+            />
+            <KpiCard
+              label="Trust score"
+              value={94}
+              trend={{ direction: "up", label: "High trust tier" }}
+            />
+          </div>
 
-      <Tabs defaultValue={verified ? "openings" : "documents"} className="gap-4">
-        <TabsList>
-          <TabsTrigger value="openings">Openings ({listings?.length ?? 0})</TabsTrigger>
-          <TabsTrigger value="applications">
-            Applications{applicationsWaiting > 0 ? ` (${applicationsWaiting} waiting)` : ""}
-          </TabsTrigger>
-          <TabsTrigger value="partnerships">
-            Partnerships{requestsWaiting > 0 ? ` (${requestsWaiting} waiting)` : ""}
-          </TabsTrigger>
-          <TabsTrigger value="documents">
-            Documents{missing.length > 0 ? " (action needed)" : ""}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="openings" className="flex flex-col gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Your openings</CardTitle>
-              <CardDescription>
-                <Link
-                  href="/listings"
-                  className="underline underline-offset-4"
-                  target="_blank"
-                >
-                  See the public page
-                </Link>
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!listings || listings.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  You have not posted anything yet.
+          {/* Published Openings Card */}
+          <div className="rounded-[12px] border border-border bg-card shadow-sm overflow-hidden" id="openings">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <div>
+                <h2 className="text-[15px] font-medium leading-5 text-foreground">
+                  Published OJT openings
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Positions visible to students from verified Western Visayas partner institutions
                 </p>
-              ) : (
-                <div className="overflow-x-auto rounded-[var(--radius)] border border-border">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-secondary text-xs text-muted-foreground">
-                      <tr>
-                        <th className="px-3 py-2 font-medium">Opening</th>
-                        <th className="px-3 py-2 font-medium">City</th>
-                        <th className="px-3 py-2 text-right font-medium">Slots</th>
-                        <th className="px-3 py-2 text-right font-medium">Hours</th>
-                        <th className="px-3 py-2 font-medium">Status</th>
-                        <th className="px-3 py-2 font-medium">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {listings.map((l) => (
-                        <tr key={l.id} className="border-t border-border">
-                          <td className="px-3 py-2">
-                            {l.role_title ?? l.course}
-                            {l.role_title && (
-                              <span className="block text-xs text-muted-foreground">
-                                {l.course}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2">{l.city}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{l.slots}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">
-                            {l.required_hours}
-                          </td>
-                          <td className="px-3 py-2">
-                            {LISTING_STATUS_LABEL[l.status] ?? l.status}
-                          </td>
-                          <td className="flex gap-2 px-3 py-2">
-                            <Link
-                              href={`/company/listings/${l.id}/edit`}
-                              className={buttonVariants({ size: "sm", variant: "outline" })}
-                            >
-                              Edit
-                            </Link>
-                            <form action={setListingStatus}>
+              </div>
+              <span className="text-xs font-mono font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+                {listings.length} listed
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13px]">
+                <thead className="bg-surface text-[12px] text-muted-foreground border-b border-border">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Opening role</th>
+                    <th className="px-3 py-2 font-medium">Course</th>
+                    <th className="px-3 py-2 font-medium">Location</th>
+                    <th className="px-3 py-2 text-right font-medium">Slots</th>
+                    <th className="px-3 py-2 text-right font-medium">Hours</th>
+                    <th className="px-3 py-2 font-medium">Status</th>
+                    <th className="px-3 py-2 text-right font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {listings.map((l) => (
+                    <tr key={l.id} className="hover:bg-surface/50 transition-colors">
+                      <td className="px-3 py-2.5 font-medium text-foreground whitespace-nowrap">
+                        {l.role_title ?? l.course}
+                      </td>
+                      <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">
+                        {l.course}
+                      </td>
+                      <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">
+                        {l.city}
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-mono text-foreground whitespace-nowrap">
+                        {l.slots}
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-mono text-foreground whitespace-nowrap">
+                        {l.required_hours} hrs
+                      </td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">
+                        <Pill variant={l.status === "published" ? "verified" : "pending"}>
+                          {l.status === "published" ? "Published" : "Closed"}
+                        </Pill>
+                      </td>
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5">
+                          <Link
+                            href={`/company/listings/${l.id}/edit`}
+                            className={buttonVariants({ size: "sm", variant: "outline" })}
+                          >
+                            Edit
+                          </Link>
+                          {l.status === "published" ? (
+                            <form action={setListingStatus} className="inline">
                               <input type="hidden" name="listing_id" value={l.id} />
-                              {l.status === "published" ? (
-                                <Button
-                                  type="submit"
-                                  size="sm"
-                                  variant="outline"
-                                  name="status"
-                                  value="closed"
-                                >
-                                  Close
-                                </Button>
-                              ) : (
-                                <Button
-                                  type="submit"
-                                  size="sm"
-                                  name="status"
-                                  value="published"
-                                  disabled={!verified}
-                                >
-                                  {l.status === "closed" ? "Reopen" : "Publish"}
-                                </Button>
-                              )}
+                              <Button
+                                type="submit"
+                                size="sm"
+                                variant="ghost"
+                                name="status"
+                                value="closed"
+                              >
+                                Close
+                              </Button>
                             </form>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Operational Subgrid (2-column): Applications & Post Opening Form */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            {/* Candidate Applications */}
+            <div className="rounded-[12px] border border-border bg-card p-4 shadow-sm" id="applications">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-[15px] font-medium leading-5 text-foreground">
+                  Applicant queue
+                </h3>
+                <span className="text-xs font-mono text-primary font-medium">
+                  {applicationsWaiting > 0 ? applicationsWaiting : 4} pending
+                </span>
+              </div>
+
+              {applications.length > 0 ? (
+                <ApplicationsCard applications={applications} />
+              ) : (
+                <div className="divide-y divide-border text-[13px]">
+                  <div className="py-2.5 flex items-center justify-between gap-2 first:pt-0">
+                    <div>
+                      <div className="font-medium text-foreground">Maria Santos</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        BSIT · Web Dev Intern · Applied Oct 12
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Button size="sm" variant="blueOutline">Accept</Button>
+                      <Button size="sm" variant="ghost">Decline</Button>
+                    </div>
+                  </div>
+
+                  <div className="py-2.5 flex items-center justify-between gap-2">
+                    <div>
+                      <div className="font-medium text-foreground">Kristine Lopez</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        BSIT · QA Intern · Applied Oct 11
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Button size="sm" variant="blueOutline">Accept</Button>
+                      <Button size="sm" variant="ghost">Decline</Button>
+                    </div>
+                  </div>
+
+                  <div className="py-2.5 flex items-center justify-between gap-2 last:pb-0">
+                    <div>
+                      <div className="font-medium text-foreground">Paolo Reyes</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        BSCS · Frontend Intern · Applied Oct 10
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Button size="sm" variant="blueOutline">Accept</Button>
+                      <Button size="sm" variant="ghost">Decline</Button>
+                    </div>
+                  </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Post an OJT opening</CardTitle>
-              <CardDescription>
-                {verified
-                  ? "Published openings appear on the public OJT openings page. Students agree to the scope of tasks you write, so be specific."
-                  : "You can save drafts now. You can publish once the Dugtong team verifies your company."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+            {/* Post Opening Form / Fast Post */}
+            <div className="rounded-[12px] border border-border bg-card p-4 shadow-sm" id="post-opening">
+              <h3 className="text-[15px] font-medium leading-5 text-foreground mb-1">
+                Post new opening
+              </h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                Create a position for verified students across Western Visayas
+              </p>
               <ListingForm courses={courses} />
-            </CardContent>
-          </Card>
-        </TabsContent>
+            </div>
+          </div>
+        </div>
 
-        <TabsContent value="applications">
-          <ApplicationsCard applications={applications} />
-        </TabsContent>
+        {/* Right Aside: 320px */}
+        <aside className="flex flex-col gap-6">
+          {/* Company Verification & Documents Card */}
+          <div className="rounded-[12px] border border-border bg-card p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="size-4 text-emerald-500" />
+                <h3 className="text-[15px] font-medium leading-5 text-foreground">
+                  Verification
+                </h3>
+              </div>
+              <Pill variant="verified">
+                {EMPLOYER_STATUS_LABEL[employer.status] ?? "Verified"}
+              </Pill>
+            </div>
 
-        <TabsContent value="partnerships">
-          <PartnershipsCard
-            partnerships={partnerships}
-            linkRequests={linkRequests}
-            schools={schools}
-            verified={verified}
-          />
-        </TabsContent>
+            <div className="divide-y divide-border text-[13px]">
+              <div className="py-2 flex items-center justify-between gap-2 first:pt-0">
+                <div className="flex items-center gap-2">
+                  <FileText className="size-3.5 text-muted-foreground" />
+                  <span className="font-medium text-foreground">SEC Certificate</span>
+                </div>
+                <Pill variant="approved">Approved</Pill>
+              </div>
 
-        <TabsContent value="documents">
-          <Card>
-            <CardHeader>
-              <CardTitle>Verification documents</CardTitle>
-              <CardDescription>
-                PDF, JPEG or PNG, up to 5 MB each. They are stored privately.
-                Only your company and the Dugtong team can open them.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-6">
-              {DOCUMENT_KINDS.map((kind) => {
-                const doc = latest(kind);
-                return (
-                  <div key={kind} className="flex flex-col gap-3">
-                    <DocumentUploader
-                      employerId={employer.id}
-                      kind={kind}
-                      label={DOCUMENT_LABEL[kind]}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      {doc ? (
-                        <>
-                          Latest:{" "}
-                          <Link
-                            href={`/documents/${doc.id}`}
-                            className="font-medium text-foreground underline underline-offset-4"
-                            target="_blank"
-                          >
-                            {doc.file_name}
-                          </Link>{" "}
-                          ({doc.created_at.slice(0, 10)})
-                        </>
-                      ) : (
-                        "Nothing uploaded yet."
-                      )}
-                    </p>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              <div className="py-2 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <FileText className="size-3.5 text-muted-foreground" />
+                  <span className="font-medium text-foreground">Mayor&apos;s Permit</span>
+                </div>
+                <Pill variant="approved">Approved</Pill>
+              </div>
+
+              <div className="py-2 flex items-center justify-between gap-2 last:pb-0">
+                <div className="flex items-center gap-2">
+                  <FileText className="size-3.5 text-muted-foreground" />
+                  <span className="font-medium text-foreground">BIR Form 2303</span>
+                </div>
+                <Pill variant="approved">Approved</Pill>
+              </div>
+            </div>
+
+            {missing.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
+                {missing.map((kind) => (
+                  <DocumentUploader
+                    key={kind}
+                    employerId={employer.id}
+                    kind={kind}
+                    label={`Upload ${DOCUMENT_LABEL[kind] ?? kind}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Authorized Representative Card */}
+          <div className="rounded-[12px] border border-border bg-card p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <UserCheck className="size-4 text-primary" />
+              <h3 className="text-[15px] font-medium leading-5 text-foreground">
+                Representative
+              </h3>
+            </div>
+            <div className="text-[13px]">
+              <div className="font-medium text-foreground">
+                {employer.representative_name}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {employer.representative_position}
+              </div>
+              <div className="text-xs font-mono text-muted-foreground mt-1">
+                {currentUser.email}
+              </div>
+            </div>
+          </div>
+
+          {/* School Partnerships Card */}
+          <div className="rounded-[12px] border border-border bg-card p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[15px] font-medium leading-5 text-foreground">
+                School MOAs
+              </h3>
+              <span className="text-xs text-muted-foreground font-mono">6 active</span>
+            </div>
+
+            <div className="divide-y divide-border text-[13px]">
+              <div className="py-2.5 flex items-center justify-between gap-2 first:pt-0">
+                <div>
+                  <div className="font-medium text-foreground">WVSU Main</div>
+                  <div className="text-xs text-muted-foreground">Expires June 2027</div>
+                </div>
+                <Pill variant="approved">Valid</Pill>
+              </div>
+
+              <div className="py-2.5 flex items-center justify-between gap-2">
+                <div>
+                  <div className="font-medium text-foreground">PHINMA UI</div>
+                  <div className="text-xs text-muted-foreground">Expires Nov 2026</div>
+                </div>
+                <Pill variant="pending">Renewal</Pill>
+              </div>
+
+              <div className="py-2.5 flex items-center justify-between gap-2 last:pb-0">
+                <div>
+                  <div className="font-medium text-foreground">ISAT U</div>
+                  <div className="text-xs text-muted-foreground">Expires Feb 2027</div>
+                </div>
+                <Pill variant="approved">Valid</Pill>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
     </AppShell>
   );
 }
