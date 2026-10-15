@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   BookOpen,
   Briefcase,
   Building2,
@@ -6,10 +7,14 @@ import {
   Clock,
   Flag,
   Handshake,
+  History,
   LayoutDashboard,
+  School,
   Send,
+  Settings,
   ShieldCheck,
   Upload,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -50,7 +55,11 @@ export const NAV: Record<Role, NavItem[]> = {
     { key: "openings", label: "OJT openings", href: "/listings", icon: Briefcase },
   ],
   supervisor: [
-    { key: "approvals", label: "Approvals", href: "/supervisor", icon: ClipboardCheck },
+    { key: "dashboard", label: "Dashboard", href: "/supervisor", icon: LayoutDashboard },
+    { key: "interns", label: "My interns", href: "/supervisor#interns", icon: Users },
+    { key: "journals", label: "Journals", href: "/supervisor#journals", icon: BookOpen },
+    { key: "attendance", label: "Attendance", href: "/supervisor#attendance", icon: Clock },
+    { key: "evaluations", label: "Evaluations", href: "/supervisor#evaluations", icon: ClipboardCheck },
     { key: "openings", label: "OJT openings", href: "/listings", icon: Briefcase },
   ],
   company: [
@@ -58,7 +67,13 @@ export const NAV: Record<Role, NavItem[]> = {
     { key: "openings", label: "OJT openings", href: "/listings", icon: Briefcase },
   ],
   admin: [
-    { key: "admin", label: "Admin", href: "/admin", icon: ShieldCheck },
-    { key: "openings", label: "OJT openings", href: "/listings", icon: Briefcase },
+    { key: "overview", label: "Overview", href: "/admin", icon: LayoutDashboard },
+    { key: "schools", label: "Schools", href: "/admin/schools", icon: School },
+    { key: "companies", label: "Companies", href: "/admin/companies", icon: Building2 },
+    { key: "verifications", label: "Verifications", href: "/admin/verifications", icon: ShieldCheck },
+    { key: "escalations", label: "Escalations", href: "/admin/escalations", icon: AlertTriangle },
+    { key: "users", label: "Users", href: "/admin/users", icon: Users },
+    { key: "audit-log", label: "Audit log", href: "/admin/audit-log", icon: History },
+    { key: "settings", label: "Settings", href: "/admin/settings", icon: Settings },
   ],
 };

@@ -24,6 +24,14 @@ export const metadata: Metadata = {
   },
   description:
     "Track OJT hours without the paperwork: students log, supervisors and coordinators approve, one click makes the report.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/dugtong-logo-mark.png", type: "image/png" },
+    ],
+    shortcut: "/icon.svg",
+    apple: "/dugtong-logo-mark.png",
+  },
 };
 
 // Runs before the page paints, so a person who chose dark mode never sees a
