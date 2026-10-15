@@ -26,15 +26,19 @@ Copy `.env.example` to `.env.local` and fill in the two Supabase values
 Anyone can sign up and create a school, so a school's roster only works
 for students **after the team verifies that school**. Until then the
 coordinator can set up and upload, but their students cannot sign in.
-In the Supabase SQL Editor (or `npx supabase db query --linked "..."`):
+
+Team members who may verify schools are **admins**. Make someone an admin
+once, in the Supabase SQL Editor (or `npx supabase db query --linked "..."`).
+They must already have signed up on the site:
 
 ```sql
-select id, name, created_at from schools order by created_at;
-update schools set verified = true where id = '<the school id>';
+insert into admins (user_id)
+select id from auth.users where email = 'person@example.com';
 ```
 
-Only verify a school you know is real. A coordinator cannot do this
-themselves.
+After that, when they sign in they land on the **Admin** screen, which lists
+every school with its coordinator's email and a **Verify** button. Only
+verify a school you know is real. A coordinator cannot do this themselves.
 
 ---
 

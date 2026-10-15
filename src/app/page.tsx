@@ -29,6 +29,10 @@ export default async function Home() {
   const student = await findStudent(supabase);
   if (student) redirect("/my-hours");
 
+  // Members of the Dugtong team go to the admin screen.
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (isAdmin) redirect("/admin");
+
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-12">
       <Card>

@@ -119,8 +119,8 @@ never used: accounts are never created from the roster upload.
 ## Done for the demo
 On the LIVE Vercel URL:
 - [ ] A coordinator can sign up, confirm email, sign in and name a school.
-- [ ] The team has verified the demo school (see the README), or the
-      students cannot sign in.
+- [ ] An admin has verified the demo school on the Admin screen (see the
+      README), or the students cannot sign in.
 - [ ] The coordinator adds one partner company.
 - [ ] The coordinator uploads a CSV of 5 fake students and sees them on
       the Dashboard, assigned to the company.
@@ -156,10 +156,16 @@ not need either of these.
   Dashboard warns when any MOA needs attention. The coordinator can add or
   change the dates at any time. Same access as the rest of **companies**.
 
+- **Admins and school verification** (ticket 16). The team's members are
+  listed in an `admins` table (edited in SQL; nobody can read or change it
+  through the app). An admin signs in to an **Admin** screen that lists
+  every school with its coordinator's email, student and company counts,
+  and a Verify / Remove verification button. The database functions behind
+  it check for an admin themselves, so no one else can use them.
+
 ## Out of scope
 - Marketplace connecting schools to companies, and company OJT listings
 - Company verification and partnership requests
-- A screen for verifying schools (the team does it in SQL for now)
 - Misuse reporting
 - Storing the signed MOA document itself (only its dates are tracked)
 - Supervisor logins and supervisor approval of hours
