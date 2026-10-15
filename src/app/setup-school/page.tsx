@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -19,6 +20,23 @@ export default async function SetupSchoolPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-12">
+      <div>
+        <Image
+          src="/dugtong-ojt-logo.png"
+          alt="Dugtong OJT"
+          width={260}
+          height={70}
+          priority
+          className="dugtong-logo-light h-auto w-52"
+        />
+        <Image
+          src="/dugtong-ojt-logo-dark.png"
+          alt=""
+          width={260}
+          height={70}
+          className="dugtong-logo-dark h-auto w-52"
+        />
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Set up your school</CardTitle>

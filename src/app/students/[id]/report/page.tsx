@@ -85,7 +85,7 @@ export default async function HoursReportPage({
           </h1>
         </header>
 
-        <section className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
+        <section className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 print:break-inside-avoid">
           <div>
             <p className="text-xs text-neutral-600">Student</p>
             <p className="font-medium">{student.name}</p>
@@ -112,7 +112,7 @@ export default async function HoursReportPage({
           </div>
         </section>
 
-        <section className="flex flex-col gap-2 rounded-[var(--radius)] border border-neutral-300 p-4">
+        <section className="flex flex-col gap-2 rounded-[var(--radius)] border border-neutral-300 p-4 print:break-inside-avoid">
           <p className="text-sm text-neutral-600">Progress toward required hours</p>
           <p className="text-2xl font-semibold tabular-nums">
             {formatHours(approved)}{" "}

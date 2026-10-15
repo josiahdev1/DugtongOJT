@@ -5,6 +5,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { STATUS_LABEL } from "@/lib/status";
 import { shortTime } from "@/lib/time";
 
@@ -76,50 +84,50 @@ export function ChangeHistory({
 }) {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="p-5 pb-3">
         <CardTitle>Change history</CardTitle>
         <CardDescription>
-          Every decision and every change after one. Nobody can edit this
-          list.
+          Audit log of every decision and every change after one. Nobody can
+          edit this list.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-0">
         {changes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No decisions yet.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-[var(--radius)] border border-border">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-secondary text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2 font-medium">When</th>
-                  <th className="px-3 py-2 font-medium">By</th>
-                  <th className="px-3 py-2 font-medium">Day</th>
-                  <th className="px-3 py-2 font-medium">Change</th>
-                </tr>
-              </thead>
-              <tbody>
-                {changes.map((c) => (
-                  <tr key={c.id} className="border-t border-border">
-                    <td className="px-3 py-2 tabular-nums">
-                      {formatWhen(c.changed_at)}
-                    </td>
-                    <td className="px-3 py-2">
-                      {whoLabel(c, userId)}
-                    </td>
-                    <td className="px-3 py-2 tabular-nums">
-                      {dateOf.get(c.entry_id) ?? "—"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {describeChange(
-                        c.old_values as Snapshot,
-                        c.new_values as Snapshot,
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            No decisions recorded yet.
           </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Timestamp</TableHead>
+                <TableHead>Actor</TableHead>
+                <TableHead>Shift date</TableHead>
+                <TableHead>Change</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {changes.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
+                    {formatWhen(c.changed_at)}
+                  </TableCell>
+                  <TableCell className="font-medium text-foreground">
+                    {whoLabel(c, userId)}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
+                    {dateOf.get(c.entry_id) ?? "—"}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {describeChange(
+                      c.old_values as Snapshot,
+                      c.new_values as Snapshot,
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </CardContent>
     </Card>

@@ -1,53 +1,125 @@
 @import "tailwindcss";
 
-/* Design tokens. Change these to re-skin the whole app at once —
-   every component below reads from them. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Dugtong OJT Design Tokens (v1.3)
+   Calm data density, high trust, accessible WCAG 2.1 AA.
+   Tokens defined centrally and mapped to Tailwind @theme inline. */
 :root {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-  --card: #ffffff;
-  --card-foreground: #0a0a0a;
-  --primary: #1a1a1a;
-  --primary-foreground: #fafafa;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #1a1a1a;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --destructive: #dc2626;
-  --destructive-foreground: #fafafa;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #0a0a0a;
-  --radius: 0.625rem;
+  --background: #FFFFFF;
+  --foreground: #0F172A;
+  --surface: #F5F7FA;
+  --surface-hover: #EEF2F7;
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+  
+  --primary: #2563EB;
+  --primary-hover: #1D4ED8;
+  --primary-foreground: #FFFFFF;
+  --primary-soft: #93B4F5;
+  
+  --secondary: #F5F7FA;
+  --secondary-foreground: #0F172A;
+  
+  --muted: #F5F7FA;
+  --muted-foreground: #596579;
+  
+  --border: rgba(15, 23, 42, 0.08);
+  --input: rgba(15, 23, 42, 0.14);
+  --ring: #2563EB;
+  
+  --radius: 8px;
+  --radius-card: 12px;
+  --radius-pill: 9999px;
+
+  /* Dugtong OJT Accents & Status Tokens */
+  --teal: #0EA5A5;
+  --teal-text: #086A6A;
+  --teal-bg: #DDF4F4;
+
+  --success: #10B981;
+  --success-text: #087A55;
+  --success-bg: #D9F5EA;
+
+  --warning: #F59E0B;
+  --warning-text: #8F5A06;
+  --warning-bg: #FEF3D7;
+
+  --destructive: #DC2626;
+  --destructive-text: #B31B1B;
+  --destructive-bg: #FDE4E4;
+  --destructive-foreground: #FFFFFF;
+
+  --escalated-bg: #7F1D1D;
+  --escalated-text: #FFFFFF;
+
+  --trust-bg: #E5EEFE;
+  --trust-text: #1D4ED8;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #fafafa;
-    --card: #141414;
-    --card-foreground: #fafafa;
-    --primary: #fafafa;
-    --primary-foreground: #1a1a1a;
-    --secondary: #27272a;
-    --secondary-foreground: #fafafa;
-    --muted: #27272a;
-    --muted-foreground: #a1a1aa;
-    --destructive: #ef4444;
-    --destructive-foreground: #fafafa;
-    --border: #27272a;
-    --input: #3f3f46;
-    --ring: #d4d4d8;
-  }
+:root.dark {
+    --background: #0B1220;
+    --foreground: #F1F5F9;
+    --surface: #0D1526;
+    --surface-hover: #17233A;
+    --card: #0D1526;
+    --card-foreground: #F1F5F9;
+
+    --primary: #2563EB;
+    --primary-hover: #1D4ED8;
+    --primary-foreground: #FFFFFF;
+    --primary-soft: #93B4F5;
+    --primary-text: #A5C7FF;
+
+    --secondary: #111A2E;
+    --secondary-foreground: #F1F5F9;
+
+    --muted: #111A2E;
+    --muted-foreground: #94A3B8;
+
+    --border: rgba(59, 130, 246, 0.15);
+    --input: rgba(148, 163, 184, 0.28);
+    --ring: #3B82F6;
+
+    /* Dugtong OJT Dark Status Tokens */
+    --teal: #3CCFCF;
+    --teal-text: #3CCFCF;
+    --teal-bg: rgba(14, 165, 165, 0.18);
+
+    --success: #34D399;
+    --success-text: #34D399;
+    --success-bg: rgba(16, 185, 129, 0.16);
+
+    --warning: #F5B74A;
+    --warning-text: #F5B74A;
+    --warning-bg: rgba(245, 158, 11, 0.16);
+
+    --destructive: #F87171;
+    --destructive-text: #F87171;
+    --destructive-bg: rgba(220, 38, 38, 0.18);
+    --destructive-foreground: #FFFFFF;
+
+    --escalated-bg: rgba(127, 29, 29, 0.35);
+    --escalated-text: #FCA5A5;
+
+    --trust-bg: rgba(59, 130, 246, 0.18);
+    --trust-text: #A5C7FF;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-text: var(--primary-text);
+
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -57,13 +129,50 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  --color-teal: var(--teal);
+  --color-teal-text: var(--teal-text);
+  --color-teal-bg: var(--teal-bg);
+
+  --color-success: var(--success);
+  --color-success-text: var(--success-text);
+  --color-success-bg: var(--success-bg);
+
+  --color-warning: var(--warning);
+  --color-warning-text: var(--warning-text);
+  --color-warning-bg: var(--warning-bg);
+
+  --color-destructive-text: var(--destructive-text);
+  --color-destructive-bg: var(--destructive-bg);
+
+  --color-escalated-bg: var(--escalated-bg);
+  --color-escalated-text: var(--escalated-text);
+
+  --color-trust-bg: var(--trust-bg);
+  --color-trust-text: var(--trust-text);
+
   --radius-base: var(--radius);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --radius-card: var(--radius-card);
+  --radius-pill: var(--radius-pill);
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+.dugtong-logo-dark {
+  display: none;
+}
+
+.dark .dugtong-logo-light {
+  display: none;
+}
+
+.dark .dugtong-logo-dark {
+  display: block;
 }

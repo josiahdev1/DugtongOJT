@@ -7,6 +7,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { getCurrentUser } from "@/lib/auth";
 import { describeMoa, moaStatus, needsAttention } from "@/lib/moa";
 import { todayInManila } from "@/lib/time";
@@ -74,28 +82,28 @@ export default async function CompaniesPage() {
               No companies yet. Add your first one above.
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-[var(--radius)] border border-border">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-secondary text-xs text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Company</th>
-                    <th className="px-3 py-2 font-medium">Supervisor</th>
-                    <th className="px-3 py-2 font-medium">MOA</th>
-                    <th className="px-3 py-2 font-medium">Supervisor logins</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <div className="rounded-[var(--radius)] border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Supervisor</TableHead>
+                    <TableHead>MOA</TableHead>
+                    <TableHead>Supervisor logins</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {companies.map((c) => {
                     const status = moaStatus(c.moa_expires_on, today);
                     return (
-                      <tr key={c.id} className="border-t border-border align-top">
-                        <td className="px-3 py-2">{c.name}</td>
-                        <td className="px-3 py-2">{c.supervisor_name}</td>
-                        <td className="px-3 py-2">
+                      <TableRow key={c.id} className="align-top">
+                        <TableCell>{c.name}</TableCell>
+                        <TableCell>{c.supervisor_name}</TableCell>
+                        <TableCell>
                           <p
                             className={
                               needsAttention(status)
-                                ? "font-medium text-destructive"
+                                ? "font-medium text-destructive-text"
                                 : undefined
                             }
                           >
@@ -112,8 +120,8 @@ export default async function CompaniesPage() {
                               expiresOn={c.moa_expires_on}
                             />
                           </details>
-                        </td>
-                        <td className="px-3 py-2">
+                        </TableCell>
+                        <TableCell>
                           <details className="text-xs text-muted-foreground">
                             <summary className="cursor-pointer underline underline-offset-4">
                               {supervisorsOf(c.id).length === 0
@@ -125,12 +133,12 @@ export default async function CompaniesPage() {
                               supervisors={supervisorsOf(c.id)}
                             />
                           </details>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
