@@ -9,7 +9,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
-import { formatHours } from "@/lib/time";
+import { MOA_WARNING_DAYS, moaStatus, needsAttention } from "@/lib/moa";
+import { formatHours, todayInManila } from "@/lib/time";
 import { signOut } from "../login/actions";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +33,7 @@ export default async function DashboardPage({
         .from("students")
         .select("id, name, student_no, course, company_id, required_hours")
         .order("name"),
-      supabase.from("companies").select("id, name"),
+      supabase.from("companies").select("id, name, moa_expires_on"),
       // Approved hours and pending counts, added up by the database.
       supabase
         .from("student_hours")
@@ -45,6 +46,11 @@ export default async function DashboardPage({
       { approved: Number(t.approved_hours), pending: Number(t.pending_count) },
     ]),
   );
+  // Companies whose MOA has expired or runs out within 30 days.
+  const today = todayInManila();
+  const moaAlerts = (companies ?? []).filter((c) =>
+    needsAttention(moaStatus(c.moa_expires_on, today)),
+  ).length;
   const totalPending = (totals ?? []).reduce(
     (sum, t) => sum + Number(t.pending_count),
     0,
@@ -76,6 +82,24 @@ export default async function DashboardPage({
           <span className="font-medium">Waiting for verification.</span> You
           can add companies and upload your roster now, but students cannot
           sign in until the Dugtong team verifies your school.
+        </p>
+      )}
+
+      {moaAlerts > 0 && (
+        <p
+          role="status"
+          className="rounded-[var(--radius)] border border-destructive p-3 text-sm"
+        >
+          <span className="font-medium">
+            ⚠ {moaAlerts} {moaAlerts === 1 ? "MOA needs" : "MOAs need"} attention.
+          </span>{" "}
+          Expired or expiring within {MOA_WARNING_DAYS} days.{" "}
+          <Link
+            href="/companies"
+            className="font-medium underline underline-offset-4"
+          >
+            Review on the Companies page
+          </Link>
         </p>
       )}
 

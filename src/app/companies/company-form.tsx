@@ -31,6 +31,17 @@ export function CompanyForm() {
         />
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="moa_signed_on">MOA signed (optional)</Label>
+          <Input id="moa_signed_on" name="moa_signed_on" type="date" />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="moa_expires_on">MOA expires (optional)</Label>
+          <Input id="moa_expires_on" name="moa_expires_on" type="date" />
+        </div>
+      </div>
+
       {state?.error && (
         <p role="alert" className="text-sm font-medium text-destructive">
           {state.error}

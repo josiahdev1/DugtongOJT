@@ -135,15 +135,35 @@ On the LIVE Vercel URL:
       names them "Sample Student N"; the app does not enforce this).
 - [ ] RLS is on for every table, and no secret key is in the project.
 
+## Added after the MVP
+Built from the LATER list once the MVP worked. The three-minute demo does
+not need either of these.
+
+- **Completion certificate** (ticket 08). On a student's page, once their
+  approved hours reach their required hours, the coordinator can issue a
+  certificate. New table **certificates**: student, school, issued by,
+  hours completed, required hours, issued at. The database adds up the
+  approved hours itself and refuses to create a certificate below the
+  requirement, sets who issued it and when, and allows one per student.
+  Only that school's coordinator can read or issue one. An issued
+  certificate cannot be edited or deleted, and it is not changed if an
+  approval is revoked later. The certificate page shows only these stored
+  values and prints to PDF like the hours report.
+- **MOA dates** (ticket 09). Each company has an optional "MOA signed" and
+  "MOA expires" date (new columns on **companies**; the expiry must be
+  after the signing date). The Companies page shows each MOA as no dates,
+  valid, expiring in N days (within 30 days) or expired, and the
+  Dashboard warns when any MOA needs attention. The coordinator can add or
+  change the dates at any time. Same access as the rest of **companies**.
+
 ## Out of scope
 - Marketplace connecting schools to companies, and company OJT listings
 - Company verification and partnership requests
 - A screen for verifying schools (the team does it in SQL for now)
 - Misuse reporting
-- MOA management and expiry alerts
+- Storing the signed MOA document itself (only its dates are tracked)
 - Supervisor logins and supervisor approval of hours
 - Evaluation rating and the school's evaluation form
-- Completion certificate
 - Onboarding more than one school
 - Server-side PDF generation (the report is printed to PDF from the
   browser)
