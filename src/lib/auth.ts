@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+
 // Who is signed in, and are they a coordinator?
 //
 // A coordinator is someone with a row in the `coordinators` table. That
@@ -27,9 +29,26 @@ export async function getCurrentUser() {
 
   const { data: school } = await supabase
     .from("schools")
-    .select("id, name")
+    .select("id, name, verified")
     .eq("id", coordinator.school_id)
     .maybeSingle();
 
   return { supabase, user, school };
+}
+
+// The signed-in student's roster row, or null if they are not on one.
+//
+// Row Level Security only returns rows that match the user's verified
+// email AND belong to a school the team has verified. If the same email
+// is on more than one roster, the oldest roster row always wins, so the
+// student never lands on a different school from one page load to the next.
+export async function findStudent(supabase: Supabase) {
+  const { data } = await supabase
+    .from("students")
+    .select("id, name, student_no, course, company_id, required_hours")
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return data;
 }

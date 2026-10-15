@@ -39,20 +39,28 @@ log and see their own hours.
 1. **Sign in** — email and password for everyone. After sign-in,
    coordinators go to the Dashboard, students go to My hours. An email
    that is neither a coordinator nor on a roster sees a "you are not on
-   a roster" message and nothing else.
+   a roster" message. That screen also has a "Set up my school" link, so
+   a new coordinator can reach screen 2, and a note that their school may
+   still be waiting to be verified.
 2. **Set up school** (coordinator, first time only) — name the school
    once.
 3. **Dashboard** (coordinator) — table of students with company,
-   approved hours and required hours; pending-approvals count; buttons
-   for Upload roster and Add company.
+   approved / required hours and pending entries; a pending-approvals
+   count; buttons for Upload roster and Add company; a "waiting for
+   verification" notice until the team verifies the school.
 4. **Add company** (coordinator) — form for company name and supervisor
    name.
 5. **Upload roster** (coordinator) — upload a CSV (name, student ID,
-   course, email, company, required hours), preview rows, confirm.
+   course, email, company, required hours), preview rows, confirm. At
+   most 500 students and 1 MB per file. If any row is bad, nothing is
+   imported, and a table lists each problem by row number and column.
 6. **Student detail** (coordinator) — that student's time entries with
-   Approve and Reject buttons, and a Generate report button.
+   Approve and Reject buttons (a decision can be changed later), a change
+   history, and a Generate report button.
 7. **My hours** (student) — form for date, time-in and time-out; list of
-   own entries with status; total of approved hours.
+   own entries with status; total of approved hours. The date is today or
+   up to 30 days back (Philippine time), one entry per day. A rejected
+   day can be logged again to fix and resubmit it.
 8. **Hours report** — printable page for one student: student, company,
    daily approved entries, approved hours and progress toward required
    hours. The coordinator uses the browser's Save as PDF.
@@ -61,8 +69,13 @@ log and see their own hours.
 All tables have Row Level Security (RLS) on. Every record belongs to a
 school, so a second school can be added later without redoing the rules.
 
-- **schools**: name. A coordinator reads and updates their own school. Any signed-in
-  user may create a school, which then becomes theirs.
+- **schools**: name, verified. A coordinator reads their own school and
+  may rename it, but can never change `verified`; only the team can, in
+  SQL. Any signed-in user may create a school, which then becomes theirs
+  (through a database function, so they cannot attach themselves to
+  someone else's). A school's roster only works for students once the
+  school is verified. This stops a stranger from creating a school and
+  claiming a classmate's email.
 - **coordinators**: user, school. A user reads their own row. A user may
   create a row linking themselves to the school they just created, and
   no other.
@@ -72,16 +85,26 @@ school, so a second school can be added later without redoing the rules.
   (stored lowercase), company, required hours. The coordinator reads and
   writes their school's rows. A student reads only their own row,
   matched by the verified email of the signed-in session (compared in
-  lowercase), never an email sent by the browser. Students cannot write.
-- **time_entries**: student, school, work date, time-in, time-out,
-  status (pending, approved or rejected), approved by, approved at. A
-  student reads and inserts only their own entries, always as pending,
-  and may edit them only while pending. Only that school's coordinator
-  may change status. Once approved, a student cannot edit the entry.
-- **time_entry_changes** (audit log): entry, changed by, changed at, old
-  values, new values. Filled automatically by the database whenever an
-  entry changes after approval. The coordinator reads their school's
-  rows. Nobody writes to it directly.
+  lowercase), never an email sent by the browser, and only in a verified
+  school. Students cannot write. If the same email is on two rosters, the
+  oldest roster row is always the one used.
+- **time_entries**: student, school (filled in by the database), work
+  date, time-in, time-out, status (pending, approved or rejected),
+  approved by, approved at. A student reads and inserts only their own
+  entries, always as pending. A student may edit an entry while it is
+  pending, or fix a rejected one, which sends it back to pending. Once
+  approved, a student cannot edit it. Only that school's coordinator may
+  approve or reject, and may change a decision later. A coordinator
+  cannot change the date or times, or send an entry back to pending. The
+  database stamps "approved by" and "approved at"; the browser cannot.
+- **time_entry_changes** (audit log): entry, school, changed by, changed
+  at, old values, new values. Filled automatically by the database for
+  every decision and every change after one. The coordinator reads their
+  school's rows. Nobody writes to it directly.
+- **student_hours** (a view, not a table): each student's approved hours
+  and pending count, added up by the database and limited by the same
+  Row Level Security as the tables it reads. The Dashboard and the report
+  use it.
 
 Students are added only through the coordinator's roster upload. An
 email that is not on a roster sees and logs nothing.
@@ -96,6 +119,8 @@ never used: accounts are never created from the roster upload.
 ## Done for the demo
 On the LIVE Vercel URL:
 - [ ] A coordinator can sign up, confirm email, sign in and name a school.
+- [ ] The team has verified the demo school (see the README), or the
+      students cannot sign in.
 - [ ] The coordinator adds one partner company.
 - [ ] The coordinator uploads a CSV of 5 fake students and sees them on
       the Dashboard, assigned to the company.
@@ -106,12 +131,14 @@ On the LIVE Vercel URL:
 - [ ] The coordinator opens the hours report and saves it as PDF.
 - [ ] A student cannot see another student's data, and an email not on
       a roster sees nothing.
-- [ ] All demo students are clearly labelled sample data.
+- [ ] All demo students are clearly labelled sample data (the sample CSV
+      names them "Sample Student N"; the app does not enforce this).
 - [ ] RLS is on for every table, and no secret key is in the project.
 
 ## Out of scope
 - Marketplace connecting schools to companies, and company OJT listings
 - Company verification and partnership requests
+- A screen for verifying schools (the team does it in SQL for now)
 - Misuse reporting
 - MOA management and expiry alerts
 - Supervisor logins and supervisor approval of hours

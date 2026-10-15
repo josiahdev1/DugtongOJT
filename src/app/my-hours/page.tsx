@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getCurrentUser } from "@/lib/auth";
+import { findStudent, getCurrentUser } from "@/lib/auth";
 import {
   MAX_DAYS_BACK,
   formatHours,
@@ -33,13 +33,7 @@ export default async function MyHoursPage() {
   if (!user) redirect("/login");
   if (school) redirect("/dashboard"); // coordinators have their own page
 
-  // Row Level Security hands back only THIS student's roster row (matched
-  // by their verified email). Nothing comes back for anyone not on a roster.
-  const { data: student } = await supabase
-    .from("students")
-    .select("id, name, student_no, course, company_id, required_hours")
-    .limit(1)
-    .maybeSingle();
+  const student = await findStudent(supabase);
   if (!student) redirect("/"); // not on a roster
 
   const [{ data: company }, { data: entries }] = await Promise.all([

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { findStudent } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   MAX_DAYS_BACK,
@@ -39,13 +40,7 @@ export async function logHours(
 
   const supabase = await createClient();
 
-  // Row Level Security returns only the signed-in student's own roster
-  // row, matched by their verified email. No row = not on a roster.
-  const { data: student } = await supabase
-    .from("students")
-    .select("id")
-    .limit(1)
-    .maybeSingle();
+  const student = await findStudent(supabase);
   if (!student) return { error: "You are not on a roster." };
 
   const { data: existing } = await supabase

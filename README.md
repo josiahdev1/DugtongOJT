@@ -1,10 +1,46 @@
-# PHINMA AI Builder — team template
+# Dugtong OJT
 
-**Your live URL:** https://dugtong-ojt.vercel.app/
+**Live URL:** https://dugtong-ojt.vercel.app/
 
-This is your team's starting point. It is already a working Next.js app
-that deploys to Vercel. You will delete the starter page and build your
-own thing on top.
+Track OJT (on-the-job training) hours without the paperwork. A
+coordinator uploads a student roster, students log their own daily hours,
+the coordinator approves them, and one click makes a printable hours
+report. Built at the PHINMA AI Builder Workshop.
+
+- What we are building and why: `docs/PROBLEM.md` and `docs/SPEC.md`
+- The build tickets: `docs/tickets/`
+- Good ideas that are not in the MVP: `docs/LATER.md`
+
+## Running it
+
+```bash
+npm install
+npm run dev
+```
+
+Copy `.env.example` to `.env.local` and fill in the two Supabase values
+(see the Supabase section below). Then open http://localhost:3000.
+
+## Verifying a school (team only)
+
+Anyone can sign up and create a school, so a school's roster only works
+for students **after the team verifies that school**. Until then the
+coordinator can set up and upload, but their students cannot sign in.
+In the Supabase SQL Editor (or `npx supabase db query --linked "..."`):
+
+```sql
+select id, name, created_at from schools order by created_at;
+update schools set verified = true where id = '<the school id>';
+```
+
+Only verify a school you know is real. A coordinator cannot do this
+themselves.
+
+---
+
+# Workshop template guide
+
+The rest of this file is the original workshop setup guide.
 
 ## Setup (once per team, ~10 minutes)
 
@@ -69,8 +105,15 @@ with it. You will be asked.
 4. Add the **same two variables** in Vercel: **Settings → Environment
    Variables**, then redeploy. Forgetting this step is the single most
    common reason the local app works and the live one does not.
-5. Read `supabase/sql/001-example.sql`. It explains Row Level Security,
-   which is what stops strangers reading your data.
+5. Create the tables by running the numbered files in `supabase/sql/` in
+   order (`001`, `002`, …). Each is run once, in the Supabase SQL Editor
+   or with `npx supabase db query --linked -f <file>`. Their comments
+   explain Row Level Security, which is what stops strangers reading your
+   data.
+6. In **Authentication → Sign In / Providers → Email**, make sure
+   **Confirm email** is on. In **Authentication → URL Configuration**,
+   set the **Site URL** to the live URL and add `/auth/callback` on both
+   the live URL and `http://localhost:3000` to **Redirect URLs**.
 
 ## The commands
 
@@ -98,9 +141,10 @@ before there is a spec — that is deliberate, not a bug.
 ## What is already here
 
 ```
-src/app/page.tsx          the starter page — delete it and build yours
+src/app/                  the screens (login, dashboard, my-hours, …)
 src/components/ui/        Button, Card, Input, Textarea, Label
 src/lib/supabase/         database clients, with comments
+src/lib/                  sign-in helpers, roster checks, time helpers
 supabase/sql/             your database changes, numbered
 docs/                     problem, pitch, spec and tickets live here
 CLAUDE.md                 the rules the agent follows

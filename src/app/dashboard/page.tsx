@@ -68,6 +68,17 @@ export default async function DashboardPage({
         </form>
       </header>
 
+      {!school.verified && (
+        <p
+          role="status"
+          className="rounded-[var(--radius)] border border-border bg-secondary p-3 text-sm"
+        >
+          <span className="font-medium">Waiting for verification.</span> You
+          can add companies and upload your roster now, but students cannot
+          sign in until the Dugtong team verifies your school.
+        </p>
+      )}
+
       <div className="flex flex-wrap gap-3">
         <Link href="/companies" className={buttonVariants({ variant: "outline" })}>
           Add company

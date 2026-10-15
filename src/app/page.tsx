@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getCurrentUser } from "@/lib/auth";
+import { findStudent, getCurrentUser } from "@/lib/auth";
 import { signOut } from "./login/actions";
 
 export const dynamic = "force-dynamic";
@@ -24,13 +24,9 @@ export default async function Home() {
   if (!user) redirect("/login");
   if (school) redirect("/dashboard");
 
-  // Row Level Security returns a roster row only if it belongs to this
-  // user's verified email. No row means they are not on any roster.
-  const { data: student } = await supabase
-    .from("students")
-    .select("id")
-    .limit(1)
-    .maybeSingle();
+  // A roster row comes back only if it matches this user's verified email
+  // and belongs to a verified school. No row means "not on a roster".
+  const student = await findStudent(supabase);
   if (student) redirect("/my-hours");
 
   return (
@@ -41,7 +37,8 @@ export default async function Home() {
           <CardDescription>
             Signed in as {user.email}. Your school&apos;s OJT coordinator adds
             students by email. Ask them to add this address, then sign in
-            again.
+            again. If they already did, their school may still be waiting to
+            be verified.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
