@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   Card,
@@ -51,6 +52,17 @@ export default async function LoginPage({
           <LoginForm />
         </CardContent>
       </Card>
+
+      <p className="text-sm text-muted-foreground">
+        Looking for a place to do your OJT?{" "}
+        <Link
+          href="/listings"
+          className="font-medium text-foreground underline underline-offset-4"
+        >
+          Browse OJT openings
+        </Link>
+        . No account needed.
+      </p>
     </main>
   );
 }

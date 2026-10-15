@@ -215,6 +215,27 @@ not need either of these.
   send a company back to waiting. The document list is still to be
   confirmed against CHED and the pilot school's requirements.
 
+- **Company listings** (ticket 14; team decisions). A verified company
+  posts OJT openings from its Company screen. New table **listings**:
+  company, course, slots, required hours, schedule, hours per day, city or
+  municipality, an optional role title, scope of tasks, and a status of
+  `draft`, `published` or `closed`. The course comes from a fixed list in
+  a **courses** table (a starter list of 14 common programs, still to be
+  confirmed with the pilot school, changed in SQL). A listing cannot leave
+  draft without a scope of tasks (at least 20 characters), only a verified
+  company can publish, and a published listing cannot go back to draft.
+  A company reads and edits only its own listings. Visitors never touch
+  the listings table. A public page at `/listings`, open without signing
+  in, reads a view that shows only published listings of verified
+  companies, and only the agreed public fields: company name, a verified
+  label, course, slots, required hours, schedule and hours per day, scope
+  of tasks, city, and the optional role title. Contact details, documents,
+  internal notes, students and trust scores are never public. Visitors can
+  filter by course and by "at least this many required hours". A listing
+  leaves the page when it is closed or its company stops being verified.
+  Editing an existing listing is not built: a company closes it and posts
+  a new one.
+
 ## Out of scope
 - Marketplace connecting schools to companies, and company OJT listings
 - Company verification and partnership requests

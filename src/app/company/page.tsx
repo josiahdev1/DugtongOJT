@@ -14,8 +14,11 @@ import {
   DOCUMENT_LABEL,
   EMPLOYER_STATUS_LABEL,
 } from "@/lib/employers";
+import { LISTING_STATUS_LABEL } from "@/lib/listings";
 import { signOut } from "../login/actions";
 import { DocumentUploader } from "./document-uploader";
+import { ListingForm } from "./listing-form";
+import { setListingStatus } from "./listing-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +30,28 @@ const STATUS_NOTE: Record<string, string> = {
     "Your company was not verified. Check that your documents are clear and correct, upload them again, and contact the Dugtong team.",
 };
 
-export default async function CompanyPage() {
+export default async function CompanyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const { user, supabase } = await getCurrentUser();
   if (!user) redirect("/login");
 
   const employer = await findEmployer(supabase);
   if (!employer) redirect("/company/setup");
+
+  // Row Level Security returns only this company's own listings.
+  const [{ data: listings }, { data: courseRows }] = await Promise.all([
+    supabase
+      .from("listings")
+      .select("id, course, role_title, slots, required_hours, city, status, created_at")
+      .order("created_at", { ascending: false }),
+    supabase.from("courses").select("name").order("name"),
+  ]);
+  const courses = (courseRows ?? []).map((c) => c.name);
+  const verified = employer.status === "verified";
 
   // Row Level Security returns only this company's own documents.
   const { data: documents } = await supabase
@@ -61,6 +80,12 @@ export default async function CompanyPage() {
           </Button>
         </form>
       </header>
+
+      {error && (
+        <p role="alert" className="text-sm font-medium text-destructive">
+          {error}
+        </p>
+      )}
 
       <Card>
         <CardHeader>
@@ -119,6 +144,105 @@ export default async function CompanyPage() {
               </div>
             );
           })}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Post an OJT opening</CardTitle>
+          <CardDescription>
+            {verified
+              ? "Published openings appear on the public OJT openings page. Students agree to the scope of tasks you write, so be specific."
+              : "You can save drafts now. You can publish once the Dugtong team verifies your company."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ListingForm courses={courses} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Your openings</CardTitle>
+          <CardDescription>
+            <Link
+              href="/listings"
+              className="underline underline-offset-4"
+              target="_blank"
+            >
+              See the public page
+            </Link>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!listings || listings.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              You have not posted anything yet.
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-[var(--radius)] border border-border">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-secondary text-xs text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Opening</th>
+                    <th className="px-3 py-2 font-medium">City</th>
+                    <th className="px-3 py-2 text-right font-medium">Slots</th>
+                    <th className="px-3 py-2 text-right font-medium">Hours</th>
+                    <th className="px-3 py-2 font-medium">Status</th>
+                    <th className="px-3 py-2 font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {listings.map((l) => (
+                    <tr key={l.id} className="border-t border-border">
+                      <td className="px-3 py-2">
+                        {l.role_title ?? l.course}
+                        {l.role_title && (
+                          <span className="block text-xs text-muted-foreground">
+                            {l.course}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">{l.city}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{l.slots}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {l.required_hours}
+                      </td>
+                      <td className="px-3 py-2">
+                        {LISTING_STATUS_LABEL[l.status] ?? l.status}
+                      </td>
+                      <td className="px-3 py-2">
+                        <form action={setListingStatus}>
+                          <input type="hidden" name="listing_id" value={l.id} />
+                          {l.status === "published" ? (
+                            <Button
+                              type="submit"
+                              size="sm"
+                              variant="outline"
+                              name="status"
+                              value="closed"
+                            >
+                              Close
+                            </Button>
+                          ) : (
+                            <Button
+                              type="submit"
+                              size="sm"
+                              name="status"
+                              value="published"
+                              disabled={!verified}
+                            >
+                              {l.status === "closed" ? "Reopen" : "Publish"}
+                            </Button>
+                          )}
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </main>
