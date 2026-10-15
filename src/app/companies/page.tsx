@@ -49,9 +49,14 @@ export default async function CompaniesPage() {
         <CardHeader>
           <CardTitle>Add a partner company</CardTitle>
           <CardDescription>
-            A company you already have a signed MOA with. Nobody else checks
-            it, so type it carefully. The MOA dates are optional, and you can
-            add them later.
+            A company you already have a signed MOA with. It becomes an
+            offline partner: an accepted partnership with no company account.
+            Nobody else checks it, so type it carefully. Companies that join
+            Dugtong appear here too once they accept a partnership on the{" "}
+            <Link href="/partnerships" className="underline underline-offset-4">
+              Partnerships page
+            </Link>
+            . The MOA dates are optional, and you can add them later.
           </CardDescription>
         </CardHeader>
         <CardContent>

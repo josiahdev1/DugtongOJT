@@ -55,6 +55,12 @@ export default async function DashboardPage({
       { approved: Number(t.approved_hours), pending: Number(t.pending_count) },
     ]),
   );
+  // Requests from companies that are waiting for this coordinator's answer.
+  const { data: partnershipData } = await supabase.rpc("school_partnerships");
+  const partnershipRequests = (
+    (partnershipData ?? []) as { status: string; requested_by: string | null }[]
+  ).filter((p) => p.status === "requested" && p.requested_by === "employer").length;
+
   // Companies whose MOA has expired or runs out within 30 days.
   const today = todayInManila();
   const moaAlerts = (companies ?? []).filter((c) =>
@@ -118,6 +124,9 @@ export default async function DashboardPage({
         </Link>
         <Link href="/roster/upload" className={buttonVariants()}>
           Upload roster
+        </Link>
+        <Link href="/partnerships" className={buttonVariants({ variant: "outline" })}>
+          Partnerships{partnershipRequests ? ` (${partnershipRequests} waiting)` : ""}
         </Link>
         <Link href="/reports" className={buttonVariants({ variant: "outline" })}>
           Reports{reportsWaiting ? ` (${reportsWaiting} waiting)` : ""}

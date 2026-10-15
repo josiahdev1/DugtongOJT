@@ -236,9 +236,35 @@ not need either of these.
   Editing an existing listing is not built: a company closes it and posts
   a new one.
 
+- **Partnerships** (ticket 15; team decisions). New table
+  **partnerships**: the school, the company (empty for an offline partner),
+  whether it is offline, who started it (school or company), a status of
+  `requested`, `accepted` or `declined` and no others, and the school's
+  placement company it produced. It cannot be read or changed directly;
+  each side uses database functions that show it only its own. A company
+  the coordinator types in is an **offline partner**: a partnership created
+  directly as accepted, marked offline, with no company account, based on a
+  signed MOA the school already holds (every company that existed before
+  this feature was backfilled the same way). A **platform partnership**
+  starts when either a coordinator at a verified school asks a verified
+  company (from the public openings page) or a verified company asks a
+  verified school (from its Company screen). Only the side that received
+  the request can accept or decline it, so a sender can never answer their
+  own request; an answered request is final and a pair cannot ask twice.
+  Accepting creates the school's placement company for that partner (with
+  "(platform)" added to the name if the coordinator already typed in a
+  company with the same name). Every company in `companies` now has an
+  accepted partnership behind it, and the database refuses to assign a
+  student to a company without one. A coordinator can no longer set a
+  company's link to a platform company or edit anything on a company but
+  its MOA dates. Coordinators have a **Partnerships** page (requests from
+  companies, requests they sent, platform partners, offline partners).
+  Linking an offline partner to the same company when it later joins the
+  platform is not built.
+
 ## Out of scope
-- Marketplace connecting schools to companies, and company OJT listings
-- Company verification and partnership requests
+- Editing a listing after it is posted, and matching students to listings or applying through the app
+- Linking an offline partner to the same company when it later joins the platform
 - Escalating a misuse report to a Dugtong admin, and a company's right to appeal an upheld report
 - Storing the signed MOA document itself (only its dates are tracked)
 - Evaluation rating and the school's evaluation form

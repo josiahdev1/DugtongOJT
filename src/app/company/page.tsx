@@ -15,9 +15,11 @@ import {
   EMPLOYER_STATUS_LABEL,
 } from "@/lib/employers";
 import { LISTING_STATUS_LABEL } from "@/lib/listings";
+import type { EmployerPartnership } from "@/lib/partnerships";
 import { signOut } from "../login/actions";
 import { DocumentUploader } from "./document-uploader";
 import { ListingForm } from "./listing-form";
+import { PartnershipsCard } from "./partnerships-card";
 import { setListingStatus } from "./listing-actions";
 
 export const dynamic = "force-dynamic";
@@ -33,9 +35,9 @@ const STATUS_NOTE: Record<string, string> = {
 export default async function CompanyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; message?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, message } = await searchParams;
   const { user, supabase } = await getCurrentUser();
   if (!user) redirect("/login");
 
@@ -52,6 +54,15 @@ export default async function CompanyPage({
   ]);
   const courses = (courseRows ?? []).map((c) => c.name);
   const verified = employer.status === "verified";
+
+  // Partnerships come from database functions, because the partnerships
+  // table itself cannot be read directly.
+  const [{ data: partnershipData }, { data: schoolData }] = await Promise.all([
+    supabase.rpc("employer_partnerships"),
+    supabase.rpc("verified_schools"),
+  ]);
+  const partnerships = (partnershipData ?? []) as EmployerPartnership[];
+  const schools = (schoolData ?? []) as { id: string; name: string }[];
 
   // Row Level Security returns only this company's own documents.
   const { data: documents } = await supabase
@@ -84,6 +95,11 @@ export default async function CompanyPage({
       {error && (
         <p role="alert" className="text-sm font-medium text-destructive">
           {error}
+        </p>
+      )}
+      {message && (
+        <p role="status" className="text-sm font-medium">
+          ✓ {message}
         </p>
       )}
 
@@ -146,6 +162,12 @@ export default async function CompanyPage({
           })}
         </CardContent>
       </Card>
+
+      <PartnershipsCard
+        partnerships={partnerships}
+        schools={schools}
+        verified={verified}
+      />
 
       <Card>
         <CardHeader>

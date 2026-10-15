@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -10,8 +10,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { getCurrentUser } from "@/lib/auth";
 import { parseMinHours, type PublicListing } from "@/lib/listings";
-import { createClient } from "@/lib/supabase/server";
+import {
+  PARTNERSHIP_STATUS_LABEL,
+  type SchoolPartnership,
+} from "@/lib/partnerships";
+import { requestPartnership } from "../partnerships/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +30,17 @@ export default async function ListingsPage({
   searchParams: Promise<{ course?: string; min_hours?: string }>;
 }) {
   const params = await searchParams;
-  const supabase = await createClient();
+  // Signed in or not, anyone can look. A coordinator at a verified school
+  // also gets a button to ask a company to partner with them.
+  const { supabase, school } = await getCurrentUser();
+  const canRequest = Boolean(school?.verified);
+  const partnershipWith = new Map<string, string>();
+  if (canRequest) {
+    const { data: mine } = await supabase.rpc("school_partnerships");
+    for (const p of (mine ?? []) as SchoolPartnership[]) {
+      if (p.employer_id) partnershipWith.set(p.employer_id, p.status);
+    }
+  }
 
   const { data: courseRows } = await supabase
     .from("courses")
@@ -161,6 +176,22 @@ export default async function ListingsPage({
                   </p>
                   <p className="whitespace-pre-wrap">{l.scope_of_tasks}</p>
                 </div>
+
+                {canRequest &&
+                  (partnershipWith.has(l.employer_id) ? (
+                    <p className="text-xs text-muted-foreground">
+                      Partnership with {l.company_name}:{" "}
+                      {PARTNERSHIP_STATUS_LABEL[partnershipWith.get(l.employer_id)!]}
+                    </p>
+                  ) : (
+                    <form action={requestPartnership}>
+                      <input type="hidden" name="employer_id" value={l.employer_id} />
+                      <input type="hidden" name="return_to" value="listings" />
+                      <Button type="submit" size="sm" variant="outline">
+                        Ask {l.company_name} to partner with my school
+                      </Button>
+                    </form>
+                  ))}
               </CardContent>
             </Card>
           ))}

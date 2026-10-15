@@ -4,11 +4,16 @@
 
 **Blocked by:** 13, 14.
 
-**Status:** blocked
+**Team decisions made:** Companies the coordinator types in become offline partners: a partnership record created directly as accepted, marked offline (no company account), based on an existing signed MOA. Platform partnerships use `requested`, then `accepted` or `declined`, and no other states. Deployments require an accepted partnership of either kind. Offline partners are not an exception to "the sender cannot accept their own request", because no request exists: the MOA is the agreement. Linking an offline partner to a company that later joins the platform is in `docs/LATER.md`.
 
-**Note:** this changes how companies work today. Right now the coordinator types in companies they already have an MOA with. Decide whether typed-in companies and partnership companies live side by side, or the typed-in ones become "offline partners". The states are `requested`, `accepted`, `declined` and nothing else.
+**Status:** todo
 
-- [ ] A coordinator can request a partnership with a listed company, and a company can request one with a school
-- [ ] Only the receiving side can accept or decline; the sender cannot accept their own request
-- [ ] An accepted partnership lets the coordinator assign students to that company
+- [ ] A coordinator at a verified school can ask a verified company to partner (from the public openings page); a verified company can ask a verified school
+- [ ] Only the side that received a request can accept or decline it; the sender cannot answer their own request, and nobody else can
+- [ ] An answered request cannot be answered again, and a declined pair cannot ask again
+- [ ] Accepting creates the school's placement company for that partner (named like the company; labelled "(platform)" if the coordinator already typed in one with the same name)
+- [ ] A company the coordinator types in becomes an offline partner: an accepted partnership with no request, and every company already in the system was backfilled the same way
+- [ ] Students can only be assigned to a company that has an accepted partnership, of either kind, and the database refuses otherwise
+- [ ] A coordinator cannot link a company to a platform company, or create a partnership, by hand
+- [ ] Each side sees only its own partnerships, and a company never sees students
 - [ ] Works on the live URL
