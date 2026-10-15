@@ -24,6 +24,11 @@ export default async function Home() {
   if (!user) redirect("/login");
   if (school) redirect("/dashboard");
 
+  // A supervisor was added to a company by a coordinator and matches by
+  // their verified email.
+  const { data: isSupervisor } = await supabase.rpc("is_supervisor");
+  if (isSupervisor) redirect("/supervisor");
+
   // A roster row comes back only if it matches this user's verified email
   // and belongs to a verified school. No row means "not on a roster".
   const student = await findStudent(supabase);
@@ -40,9 +45,9 @@ export default async function Home() {
           <CardTitle>You are not on a roster</CardTitle>
           <CardDescription>
             Signed in as {user.email}. Your school&apos;s OJT coordinator adds
-            students by email. Ask them to add this address, then sign in
-            again. If they already did, their school may still be waiting to
-            be verified.
+            students, and company supervisors, by email. Ask them to add this
+            address, then sign in again. If they already did, their school
+            may still be waiting to be verified.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">

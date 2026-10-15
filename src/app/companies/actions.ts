@@ -63,6 +63,59 @@ export async function addCompany(
   return { message: `Added ${name}.` };
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Let a supervisor approve hours for one company, by email.
+//
+// The supervisor signs up with this email and confirms it; the database
+// then matches them by the verified email of their login (the same way
+// students are matched to a roster). Nothing is sent to them: the
+// coordinator tells them to sign up.
+export async function addSupervisor(
+  _prev: CompanyState,
+  formData: FormData,
+): Promise<CompanyState> {
+  const companyId = String(formData.get("company_id") ?? "");
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
+
+  if (!UUID_RE.test(companyId)) return { error: "Unknown company." };
+  if (!EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
+
+  const { supabase, school } = await getCurrentUser();
+  if (!school) return { error: "Only a coordinator can add a supervisor." };
+
+  // The database refuses a company that is not this school's.
+  const { error } = await supabase
+    .from("company_supervisors")
+    .insert({ company_id: companyId, email });
+
+  if (error) {
+    return {
+      error:
+        error.code === "23505"
+          ? "That email is already a supervisor here."
+          : "Could not add the supervisor. Please try again.",
+    };
+  }
+
+  revalidatePath("/companies");
+  return { message: `Added ${email}. Ask them to sign up with that email.` };
+}
+
+// Take a supervisor's access away.
+export async function removeSupervisor(formData: FormData) {
+  const supervisorId = String(formData.get("supervisor_id") ?? "");
+  if (!UUID_RE.test(supervisorId)) return;
+
+  const { supabase, school } = await getCurrentUser();
+  if (!school) return;
+
+  await supabase.from("company_supervisors").delete().eq("id", supervisorId);
+  revalidatePath("/companies");
+}
+
 // Change the MOA dates of a company that already exists.
 export async function updateMoa(
   _prev: CompanyState,

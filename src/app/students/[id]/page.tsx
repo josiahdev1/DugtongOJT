@@ -77,7 +77,9 @@ export default async function StudentDetailPage({
       ? { data: [] }
       : await supabase
           .from("time_entry_changes")
-          .select("id, changed_at, entry_id, changed_by, old_values, new_values")
+          .select(
+            "id, changed_at, entry_id, changed_by, actor_role, old_values, new_values",
+          )
           .in("entry_id", entryIds)
           .order("changed_at", { ascending: false });
 

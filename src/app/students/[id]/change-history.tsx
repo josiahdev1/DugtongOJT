@@ -20,9 +20,25 @@ export type Change = {
   changed_at: string;
   entry_id: string;
   changed_by: string | null;
+  actor_role: string | null;
   old_values: unknown;
   new_values: unknown;
 };
+
+const ROLE_LABEL: Record<string, string> = {
+  coordinator: "Coordinator",
+  supervisor: "Supervisor",
+  student: "Student",
+  system: "System",
+};
+
+// "You (Coordinator)", "Supervisor", "Student"… Older rows were written
+// before the role was recorded, so fall back to the old guess for them.
+function whoLabel(c: Change, userId: string) {
+  const role = c.actor_role ? (ROLE_LABEL[c.actor_role] ?? "Someone") : null;
+  if (c.changed_by === userId) return role ? `You (${role})` : "You";
+  return role ?? "Student";
+}
 
 // "pending → approved" or "08:00–17:00 → 08:00–18:00", whichever changed.
 function describeChange(oldV: Snapshot, newV: Snapshot) {
@@ -88,7 +104,7 @@ export function ChangeHistory({
                       {formatWhen(c.changed_at)}
                     </td>
                     <td className="px-3 py-2">
-                      {c.changed_by === userId ? "You" : "Student"}
+                      {whoLabel(c, userId)}
                     </td>
                     <td className="px-3 py-2 tabular-nums">
                       {dateOf.get(c.entry_id) ?? "—"}

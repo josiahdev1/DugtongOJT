@@ -12,6 +12,7 @@ import { describeMoa, moaStatus, needsAttention } from "@/lib/moa";
 import { todayInManila } from "@/lib/time";
 import { CompanyForm } from "./company-form";
 import { MoaForm } from "./moa-form";
+import { SupervisorsPanel } from "./supervisors-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,13 @@ export default async function CompaniesPage() {
     .from("companies")
     .select("id, name, supervisor_name, moa_signed_on, moa_expires_on")
     .order("name");
+
+  const { data: supervisors } = await supabase
+    .from("company_supervisors")
+    .select("id, company_id, email")
+    .order("email");
+  const supervisorsOf = (companyId: string) =>
+    (supervisors ?? []).filter((s) => s.company_id === companyId);
 
   const today = todayInManila();
 
@@ -68,6 +76,7 @@ export default async function CompaniesPage() {
                     <th className="px-3 py-2 font-medium">Company</th>
                     <th className="px-3 py-2 font-medium">Supervisor</th>
                     <th className="px-3 py-2 font-medium">MOA</th>
+                    <th className="px-3 py-2 font-medium">Supervisor logins</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -96,6 +105,19 @@ export default async function CompaniesPage() {
                               companyId={c.id}
                               signedOn={c.moa_signed_on}
                               expiresOn={c.moa_expires_on}
+                            />
+                          </details>
+                        </td>
+                        <td className="px-3 py-2">
+                          <details className="text-xs text-muted-foreground">
+                            <summary className="cursor-pointer underline underline-offset-4">
+                              {supervisorsOf(c.id).length === 0
+                                ? "Add a supervisor"
+                                : `${supervisorsOf(c.id).length} supervisor${supervisorsOf(c.id).length === 1 ? "" : "s"}`}
+                            </summary>
+                            <SupervisorsPanel
+                              companyId={c.id}
+                              supervisors={supervisorsOf(c.id)}
                             />
                           </details>
                         </td>

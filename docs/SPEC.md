@@ -163,16 +163,33 @@ not need either of these.
   and a Verify / Remove verification button. The database functions behind
   it check for an admin themselves, so no one else can use them.
 
+- **Supervisor approval** (ticket 10; team decision: the supervisor
+  approves, the coordinator can override). On a company's row on the
+  Companies page, the coordinator adds supervisors by email (new table
+  **company_supervisors**: school, company, email in lowercase; only that
+  school's coordinator reads, adds and removes). A supervisor signs up
+  with that email, confirms it, and is matched by the verified email of
+  their login, only in a verified school. They land on a **Supervisor**
+  screen with the entries waiting for approval and their students' hours.
+  A supervisor sees only the time entries of students at their own
+  company; they never read the students table (so never see emails) and
+  get name, ID, course, hours and company through a database function.
+  They can approve or reject, never change dates or times, never send an
+  entry back to pending, and cannot approve their own hours if they are
+  also a student. The database stamps who decided and when. A coordinator
+  can still change any decision. The change history now records whether
+  a coordinator, supervisor or student made each change.
+
 ## Out of scope
 - Marketplace connecting schools to companies, and company OJT listings
 - Company verification and partnership requests
 - Misuse reporting
 - Storing the signed MOA document itself (only its dates are tracked)
-- Supervisor logins and supervisor approval of hours
 - Evaluation rating and the school's evaluation form
 - Onboarding more than one school
 - Server-side PDF generation (the report is printed to PDF from the
   browser)
 
-Deliberate cuts from the proposal: the coordinator, not a supervisor,
-approves hours, and there is no evaluation rating.
+Deliberate cuts from the proposal: there is no evaluation rating. (The
+MVP had the coordinator approving hours; supervisor approval was added
+afterwards, see "Added after the MVP".)

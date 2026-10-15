@@ -9,12 +9,12 @@ stays small enough to actually ship by Session 3.
 - Completion certificate (ticket 08)
 - MOA dates and expiry warnings (ticket 09)
 - Admins, and a screen to verify schools (ticket 16)
+- Supervisor logins and approval of hours (ticket 10)
 
 ## Still to do (each has a ticket in `docs/tickets/`)
 These are written as tickets but marked **blocked**, because each needs a
 team decision or an input we do not have. The ticket says what is missing.
 
-- Supervisor logins, with supervisors approving hours instead of the coordinator (ticket 10)
 - Misuse reporting for interns made to work outside agreed tasks (ticket 11)
 - Evaluation rating and report, which needs the school's real evaluation form first (ticket 12)
 - Company accounts, and an admin who verifies companies and their documents (ticket 13)
