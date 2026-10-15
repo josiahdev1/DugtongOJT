@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { findStudent, getCurrentUser } from "@/lib/auth";
+import { STATUS_LABEL } from "@/lib/status";
 import {
   MAX_DAYS_BACK,
   formatHours,
@@ -20,12 +21,6 @@ import { signOut } from "../login/actions";
 import { LogForm } from "./log-form";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  approved: "Approved",
-  rejected: "Rejected",
-};
 
 export default async function MyHoursPage() {
   const { user, school, supabase } = await getCurrentUser();
