@@ -27,8 +27,12 @@ export default async function DashboardPage({
 
   const { imported } = await searchParams;
 
-  const [{ data: students }, { data: companies }, { data: totals }] =
-    await Promise.all([
+  const [
+    { data: students },
+    { data: companies },
+    { data: totals },
+    { count: reportsWaiting },
+  ] = await Promise.all([
       supabase
         .from("students")
         .select("id, name, student_no, course, company_id, required_hours")
@@ -38,6 +42,11 @@ export default async function DashboardPage({
       supabase
         .from("student_hours")
         .select("student_id, approved_hours, pending_count"),
+      // Misuse reports still waiting for this coordinator's decision.
+      supabase
+        .from("reports")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "submitted"),
     ]);
   const companyName = new Map((companies ?? []).map((c) => [c.id, c.name]));
   const hoursOf = new Map(
@@ -109,6 +118,9 @@ export default async function DashboardPage({
         </Link>
         <Link href="/roster/upload" className={buttonVariants()}>
           Upload roster
+        </Link>
+        <Link href="/reports" className={buttonVariants({ variant: "outline" })}>
+          Reports{reportsWaiting ? ` (${reportsWaiting} waiting)` : ""}
         </Link>
       </div>
 

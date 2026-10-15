@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
+import { CATEGORY_LABEL } from "@/lib/reports";
 import { formatHours, hoursBetween, shortTime } from "@/lib/time";
 import { signOut } from "../login/actions";
 import { decideAsSupervisor } from "./actions";
@@ -43,6 +44,17 @@ export default async function SupervisorPage({
   const { data: studentData } = await supabase.rpc("supervisor_students");
   const students = (studentData ?? []) as StudentRow[];
   const nameOf = new Map(students.map((s) => [s.id, s.name]));
+
+  // Reports the school coordinator has UPHELD about this company. They never
+  // include who filed them, and reports that were not upheld never appear.
+  const { data: reportData } = await supabase.rpc("supervisor_upheld_reports");
+  const upheldReports = (reportData ?? []) as {
+    id: string;
+    company_id: string;
+    category: string;
+    related_date: string;
+    description: string;
+  }[];
 
   const [{ data: companies }, { data: pending }] = await Promise.all([
     supabase.from("companies").select("id, name"),
@@ -151,6 +163,35 @@ export default async function SupervisorPage({
           )}
         </CardContent>
       </Card>
+
+      {upheldReports.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Upheld reports about your company</CardTitle>
+            <CardDescription>
+              A school coordinator reviewed these and upheld them. They do
+              not say who raised them. Please make sure the work students do
+              matches the tasks agreed with the school.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {upheldReports.map((r) => (
+              <article
+                key={r.id}
+                className="flex flex-col gap-1 rounded-[var(--radius)] border border-border p-3"
+              >
+                <p className="text-sm font-medium">
+                  {CATEGORY_LABEL[r.category] ?? r.category}{" "}
+                  <span className="font-normal tabular-nums text-muted-foreground">
+                    · {r.related_date} · {companyName.get(r.company_id) ?? "—"}
+                  </span>
+                </p>
+                <p className="whitespace-pre-wrap text-sm">{r.description}</p>
+              </article>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

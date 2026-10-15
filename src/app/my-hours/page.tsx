@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -108,6 +109,18 @@ export default async function MyHoursPage() {
           />
         </CardContent>
       </Card>
+
+      <p className="text-sm text-muted-foreground">
+        Something wrong at your placement, like being asked to do work outside
+        what was agreed?{" "}
+        <Link
+          href="/report"
+          className="font-medium text-foreground underline underline-offset-4"
+        >
+          Report a problem
+        </Link>
+        .
+      </p>
 
       <Card>
         <CardHeader>

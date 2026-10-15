@@ -180,10 +180,25 @@ not need either of these.
   can still change any decision. The change history now records whether
   a coordinator, supervisor or student made each change.
 
+- **Misuse reports** (ticket 11; team decisions). New table **reports**:
+  student, school and company (both filled in by the database from the
+  roster), type (work outside the agreed tasks, unsafe conditions, or
+  unrecorded overtime), the day it happened (today or up to 90 days
+  back), a description of 10 to 2000 characters, status, who decided and
+  when. Statuses: `submitted`, `upheld`, `not_upheld`, and no others. A
+  student files from a "Report a problem" page linked on My hours and sees
+  only their own reports. The school coordinator sees every report for
+  their school, including who filed it, and is the only one who can move
+  it from submitted to upheld or not upheld. The decision is final; there
+  is no escalation to an admin. A supervisor sees a report only after it
+  is upheld, only for their own company, through a database function that
+  never returns the student. A report that is not upheld is never shown to
+  the company.
+
 ## Out of scope
 - Marketplace connecting schools to companies, and company OJT listings
 - Company verification and partnership requests
-- Misuse reporting
+- Escalating a misuse report to a Dugtong admin, and a company's right to appeal an upheld report
 - Storing the signed MOA document itself (only its dates are tracked)
 - Evaluation rating and the school's evaluation form
 - Onboarding more than one school
