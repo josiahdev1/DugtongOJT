@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { findStudent, getCurrentUser } from "@/lib/auth";
 import {
@@ -63,6 +64,10 @@ export default async function MyHoursPage() {
     .filter((e) => e.status === "pending")
     .reduce((sum, e) => sum + hoursBetween(e.time_in, e.time_out), 0);
 
+  // Their own completion certificate, once the coordinator has issued it.
+  const { data: certificateRows } = await supabase.rpc("my_certificate");
+  const hasCertificate = ((certificateRows ?? []) as unknown[]).length > 0;
+
   const today = todayInManila();
 
   return (
@@ -108,6 +113,27 @@ export default async function MyHoursPage() {
           />
         </CardContent>
       </Card>
+
+      {hasCertificate && (
+        <Card>
+          <CardHeader className="p-5 pb-3">
+            <CardTitle>Your certificate</CardTitle>
+            <CardDescription>
+              Your coordinator issued your completion certificate. You can
+              open it and save it as a PDF.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-3 p-5 pt-0">
+            <Badge variant="approved">Certificate issued</Badge>
+            <Link
+              href="/my-hours/certificate"
+              className={buttonVariants({ size: "sm" })}
+            >
+              View certificate
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Log Hours Form Card */}
       <Card>

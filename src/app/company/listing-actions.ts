@@ -107,3 +107,95 @@ export async function setListingStatus(formData: FormData) {
   revalidatePath("/listings");
   redirect("/company");
 }
+
+// A company edits one of its own listings. It can change any of the
+// details, whether the listing is a draft, published or closed. The status
+// is not changed here (except "Publish" on a draft). The database still
+// refuses a published listing without a scope of tasks, and an edit by
+// anyone but the owner.
+export async function updateListing(
+  _prev: ListingState,
+  formData: FormData,
+): Promise<ListingState> {
+  const listingId = String(formData.get("listing_id") ?? "");
+  const intent = formData.get("intent") === "publish" ? "publish" : "save";
+  if (!UUID_RE.test(listingId)) return { error: "Unknown opening." };
+
+  const course = String(formData.get("course") ?? "");
+  const slots = Number(formData.get("slots"));
+  const requiredHours = Number(formData.get("required_hours"));
+  const hoursPerDay = Number(formData.get("hours_per_day"));
+  const schedule = String(formData.get("schedule") ?? "").trim();
+  const city = String(formData.get("city") ?? "").trim();
+  const roleTitle = String(formData.get("role_title") ?? "").trim();
+  const scope = String(formData.get("scope_of_tasks") ?? "").trim();
+
+  if (!course) return { error: "Choose a course." };
+  if (!Number.isInteger(slots) || slots < 1 || slots > 1000) {
+    return { error: "Slots must be a whole number from 1 to 1000." };
+  }
+  if (!Number.isInteger(requiredHours) || requiredHours < 1 || requiredHours > 2000) {
+    return { error: "Required hours must be a whole number from 1 to 2000." };
+  }
+  if (!(hoursPerDay > 0 && hoursPerDay <= 24)) {
+    return { error: "Hours per day must be more than 0 and at most 24." };
+  }
+  if (!schedule || schedule.length > 200) {
+    return { error: "Describe the schedule (up to 200 characters)." };
+  }
+  if (!city || city.length > 120) {
+    return { error: "Enter the city or municipality." };
+  }
+  if (roleTitle.length > 120) return { error: "The role title is too long." };
+  if (scope.length > 4000) return { error: "The scope of tasks is too long." };
+
+  const supabase = await createClient();
+
+  // Row Level Security only returns a listing this company owns.
+  const { data: current } = await supabase
+    .from("listings")
+    .select("status")
+    .eq("id", listingId)
+    .maybeSingle();
+  if (!current) return { error: "Unknown opening." };
+
+  // Only a draft can be saved without a scope of tasks.
+  if ((current.status !== "draft" || intent === "publish") && scope.length < 20) {
+    return {
+      error:
+        "Describe what students will do (at least 20 characters). A listing that is not a draft needs a scope of tasks.",
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("listings")
+    .update({
+      course,
+      slots,
+      required_hours: requiredHours,
+      hours_per_day: hoursPerDay,
+      schedule,
+      city,
+      role_title: roleTitle || null,
+      scope_of_tasks: scope,
+      ...(intent === "publish" && current.status === "draft"
+        ? { status: "published" }
+        : {}),
+    })
+    .eq("id", listingId)
+    .select("id");
+
+  if (error || !data || data.length === 0) {
+    return {
+      error: error?.message.includes("verified")
+        ? "Only a verified company can publish a listing."
+        : error?.code === "23503"
+          ? "Choose a course from the list."
+          : "Could not save the changes. Please try again.",
+    };
+  }
+
+  revalidatePath("/company");
+  revalidatePath("/listings");
+  redirect(`/company?message=${encodeURIComponent("Changes saved.")}`);
+}

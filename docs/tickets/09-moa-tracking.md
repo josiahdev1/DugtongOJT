@@ -6,9 +6,9 @@
 
 **Status:** todo
 
-- [ ] The Add company form has optional "MOA signed" and "MOA expires" dates, and the expiry must be after the signing date
-- [ ] The coordinator can add or change the dates of an existing company
-- [ ] Each company shows "No MOA dates", "Valid until …", "Expires in N days" or "Expired"
-- [ ] The Dashboard shows a notice when any MOA is expired or expires within 30 days, with a link to the Companies page
+- [x] The Add company form has optional "MOA signed" and "MOA expires" dates, and the expiry must be after the signing date
+- [x] The coordinator can add or change the dates of an existing company
+- [x] Each company shows "No MOA dates", "Valid until …", "Expires in N days" or "Expired"
+- [x] The Dashboard shows a notice when any MOA is expired or expires within 30 days, with a link to the Companies page
 - [ ] Only that school's coordinator can see or change MOA dates
 - [ ] Works on the live URL

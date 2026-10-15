@@ -8,12 +8,12 @@
 
 **Status:** todo
 
-- [ ] A coordinator at a verified school can ask a verified company to partner (from the public openings page); a verified company can ask a verified school
-- [ ] Only the side that received a request can accept or decline it; the sender cannot answer their own request, and nobody else can
-- [ ] An answered request cannot be answered again, and a declined pair cannot ask again
-- [ ] Accepting creates the school's placement company for that partner (named like the company; labelled "(platform)" if the coordinator already typed in one with the same name)
-- [ ] A company the coordinator types in becomes an offline partner: an accepted partnership with no request, and every company already in the system was backfilled the same way
-- [ ] Students can only be assigned to a company that has an accepted partnership, of either kind, and the database refuses otherwise
-- [ ] A coordinator cannot link a company to a platform company, or create a partnership, by hand
-- [ ] Each side sees only its own partnerships, and a company never sees students
+- [x] A coordinator at a verified school can ask a verified company to partner (from the public openings page); a verified company can ask a verified school
+- [x] Only the side that received a request can accept or decline it; the sender cannot answer their own request, and nobody else can
+- [x] An answered request cannot be answered again, and a declined pair cannot ask again
+- [x] Accepting creates the school's placement company for that partner (named like the company; labelled "(platform)" if the coordinator already typed in one with the same name)
+- [x] A company the coordinator types in becomes an offline partner: an accepted partnership with no request, and every company already in the system was backfilled the same way
+- [x] Students can only be assigned to a company that has an accepted partnership, of either kind, and the database refuses otherwise
+- [x] A coordinator cannot link a company to a platform company, or create a partnership, by hand
+- [x] Each side sees only its own partnerships, and a company never sees students
 - [ ] Works on the live URL

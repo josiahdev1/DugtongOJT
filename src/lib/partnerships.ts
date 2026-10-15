@@ -26,3 +26,31 @@ export const PARTNERSHIP_STATUS_LABEL: Record<string, string> = {
   accepted: "Accepted",
   declined: "Declined",
 };
+
+// Linking an offline partner (a company the coordinator typed in) to the
+// same company on the platform. What school_links() and
+// employer_link_requests() return.
+export type SchoolLink = {
+  id: string;
+  company_id: string;
+  company_name: string;
+  employer_name: string;
+  status: "requested" | "accepted" | "declined";
+  created_at: string;
+  decided_at: string | null;
+};
+
+export type EmployerLinkRequest = {
+  id: string;
+  school_name: string;
+  company_name: string;
+  status: "requested" | "accepted" | "declined";
+  created_at: string;
+  decided_at: string | null;
+};
+
+export const LINK_STATUS_LABEL: Record<string, string> = {
+  requested: "Waiting for the company",
+  accepted: "Linked",
+  declined: "Declined",
+};

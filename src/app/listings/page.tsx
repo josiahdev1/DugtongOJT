@@ -5,13 +5,16 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { getCurrentUser } from "@/lib/auth";
+import { Textarea } from "@/components/ui/textarea";
+import { APPLICATION_STATUS_LABEL } from "@/lib/applications";
+import { findStudent, getCurrentUser } from "@/lib/auth";
 import { parseMinHours, type PublicListing } from "@/lib/listings";
 import {
   PARTNERSHIP_STATUS_LABEL,
   type SchoolPartnership,
 } from "@/lib/partnerships";
 import { requestPartnership } from "../partnerships/actions";
+import { applyToListing } from "./actions";
 
 export const metadata = { title: "OJT openings" };
 export const dynamic = "force-dynamic";
@@ -23,13 +26,29 @@ export const dynamic = "force-dynamic";
 export default async function ListingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ course?: string; min_hours?: string }>;
+  searchParams: Promise<{
+    course?: string;
+    min_hours?: string;
+    error?: string;
+    message?: string;
+  }>;
 }) {
   const params = await searchParams;
   // Signed in or not, anyone can look. A coordinator at a verified school
   // also gets a button to ask a company to partner with them.
   const { supabase, user, school } = await getCurrentUser();
   const canRequest = Boolean(school?.verified);
+
+  // A student on a roster can apply. Coordinators and visitors cannot.
+  const student = user && !school ? await findStudent(supabase) : null;
+  const appliedTo = new Map<string, string>();
+  if (student) {
+    const { data: mine } = await supabase
+      .from("applications")
+      .select("listing_id, status")
+      .neq("status", "withdrawn");
+    for (const a of mine ?? []) appliedTo.set(a.listing_id, a.status);
+  }
   const partnershipWith = new Map<string, string>();
   if (canRequest) {
     const { data: mine } = await supabase.rpc("school_partnerships");
@@ -71,6 +90,15 @@ export default async function ListingsPage({
             account to look.
           </p>
         </header>
+
+        {params.error && (
+          <div
+            role="alert"
+            className="mt-6 max-w-3xl rounded-[8px] border border-destructive/30 bg-destructive-bg p-3 text-xs font-medium text-destructive-text"
+          >
+            {params.error}
+          </div>
+        )}
 
         <div className="mt-8 grid items-start gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-12">
           {/* Filters */}
@@ -197,6 +225,48 @@ export default async function ListingsPage({
                               Ask {l.company_name} to partner with my school
                             </Button>
                           </form>
+                        ))}
+
+                      {student &&
+                        (appliedTo.has(l.id) ? (
+                          <p className="text-sm text-muted-foreground">
+                            Your application:{" "}
+                            <span className="font-medium text-foreground">
+                              {APPLICATION_STATUS_LABEL[appliedTo.get(l.id)!]}
+                            </span>
+                          </p>
+                        ) : (
+                          <details>
+                            <summary className="w-fit cursor-pointer list-none rounded-[8px] border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                              Apply for this opening
+                            </summary>
+                            <form
+                              action={applyToListing}
+                              className="mt-3 flex max-w-xl flex-col gap-2"
+                            >
+                              <input type="hidden" name="listing_id" value={l.id} />
+                              <label
+                                htmlFor={`note-${l.id}`}
+                                className="text-sm font-medium"
+                              >
+                                A short note to {l.company_name} (optional)
+                              </label>
+                              <Textarea
+                                id={`note-${l.id}`}
+                                name="note"
+                                maxLength={1000}
+                                placeholder="Why this opening, and what you can do."
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                The company sees your name, student ID, course
+                                and school. If they accept, your coordinator
+                                places you; you are not placed automatically.
+                              </p>
+                              <div>
+                                <Button type="submit">Send application</Button>
+                              </div>
+                            </form>
+                          </details>
                         ))}
                     </article>
                   </li>

@@ -9,11 +9,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
+import { Badge } from "@/components/ui/badge";
+import { Select } from "@/components/ui/select";
 import {
+  LINK_STATUS_LABEL,
   PARTNERSHIP_STATUS_LABEL,
+  type SchoolLink,
   type SchoolPartnership,
 } from "@/lib/partnerships";
-import { answerPartnership } from "./actions";
+import { answerPartnership, proposeLink } from "./actions";
 import { AppShell } from "@/components/app-shell/app-shell";
 
 export const dynamic = "force-dynamic";
@@ -42,7 +46,19 @@ export default async function PartnershipsPage({
   );
   const accepted = all.filter((p) => p.kind === "platform" && p.status === "accepted");
   const declined = all.filter((p) => p.kind === "platform" && p.status === "declined");
-  const offline = all.filter((p) => p.kind === "offline");
+
+  // Linking an offline partner to the same company on the platform.
+  const [{ data: linkData }, { data: linkableData }, { data: offlineCompanies }] =
+    await Promise.all([
+      supabase.rpc("school_links"),
+      supabase.rpc("linkable_employers"),
+      supabase.from("companies").select("id, name").is("employer_id", null).order("name"),
+    ]);
+  const links = (linkData ?? []) as SchoolLink[];
+  const linkable = (linkableData ?? []) as { id: string; name: string }[];
+  // The latest link request for each offline partner.
+  const linkOf = new Map<string, SchoolLink>();
+  for (const l of [...links].reverse()) linkOf.set(l.company_id, l);
 
   return (
     <AppShell
@@ -55,9 +71,12 @@ export default async function PartnershipsPage({
       org={{ name: school.name, verified: school.verified }}
     >
       {error && (
-        <p role="alert" className="text-sm font-medium text-destructive">
+        <div
+          role="alert"
+          className="rounded-[8px] border border-destructive/30 bg-destructive-bg p-3 text-xs font-medium text-destructive-text"
+        >
           {error}
-        </p>
+        </div>
       )}
       {message && (
         <p role="status" className="text-sm font-medium">
@@ -191,18 +210,96 @@ export default async function PartnershipsPage({
           <CardDescription>
             Companies you added yourself on the Companies page. They count as
             accepted partnerships, based on a signed MOA you already hold.
-            They do not have a Dugtong account.
+            They do not have a Dugtong account. When one of them joins
+            Dugtong, you can link it to its account: the company must accept,
+            and its students, hours and reports stay exactly as they are.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {offline.length === 0 ? (
+        <CardContent className="flex flex-col gap-3">
+          {(offlineCompanies ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground">None yet.</p>
           ) : (
-            <ul className="flex flex-col gap-1 text-sm">
-              {offline.map((p) => (
-                <li key={p.id}>{p.company_name}</li>
-              ))}
-            </ul>
+            (offlineCompanies ?? []).map((c) => {
+              const link = linkOf.get(c.id);
+              const canAsk = !link || link.status === "declined";
+              return (
+                <div
+                  key={c.id}
+                  className="flex flex-col gap-3 rounded-[8px] border border-border p-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-foreground">
+                      {c.name}
+                    </p>
+                    {link && (
+                      <Badge
+                        variant={
+                          link.status === "accepted"
+                            ? "approved"
+                            : link.status === "declined"
+                              ? "secondary"
+                              : "pending"
+                        }
+                      >
+                        {LINK_STATUS_LABEL[link.status]}
+                      </Badge>
+                    )}
+                  </div>
+                  {link && (
+                    <p className="text-xs text-muted-foreground">
+                      Link to {link.employer_name} · asked{" "}
+                      <span className="font-mono tabular-nums">
+                        {link.created_at.slice(0, 10)}
+                      </span>
+                    </p>
+                  )}
+                  {canAsk && school.verified && (
+                    <details>
+                      <summary className="w-fit cursor-pointer list-none rounded-[8px] border border-border px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        {link ? "Ask another company" : "Link to a Dugtong company"}
+                      </summary>
+                      <form action={proposeLink} className="mt-3 flex flex-col gap-2">
+                        <input type="hidden" name="company_id" value={c.id} />
+                        <label
+                          htmlFor={`link-${c.id}`}
+                          className="text-sm font-medium"
+                        >
+                          Which Dugtong company is {c.name}?
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          <Select
+                            id={`link-${c.id}`}
+                            name="employer_id"
+                            required
+                            defaultValue=""
+                            className="max-w-sm"
+                          >
+                            <option value="" disabled>
+                              {linkable.length === 0
+                                ? "No verified companies to link to"
+                                : "Choose a company…"}
+                            </option>
+                            {linkable.map((e) => (
+                              <option key={e.id} value={e.id}>
+                                {e.name}
+                              </option>
+                            ))}
+                          </Select>
+                          <Button type="submit" disabled={linkable.length === 0}>
+                            Send link request
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Only verified companies you have no partnership with
+                          yet are listed. Nothing changes until the company
+                          accepts.
+                        </p>
+                      </form>
+                    </details>
+                  )}
+                </div>
+              );
+            })
           )}
         </CardContent>
       </Card>

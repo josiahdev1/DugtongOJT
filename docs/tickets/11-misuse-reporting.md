@@ -6,10 +6,10 @@
 
 **Status:** todo
 
-- [ ] A student can file a report with a type (work outside the agreed tasks, unsafe conditions, unrecorded overtime), a day within the last 90 days, and a description of at least 10 characters
-- [ ] A student can find "Report a problem" from their My hours page, and sees only their own reports and each one's status
-- [ ] The coordinator sees a list of their school's reports with the student's name, and can uphold or not uphold each one; the decision is final and records who decided and when
-- [ ] The Dashboard shows how many reports are waiting
-- [ ] A supervisor sees a report only once it is upheld, only for their own company, and never who filed it; a report that is not upheld never reaches the company
-- [ ] Nobody but the student and their school's coordinator can read a submitted report
+- [x] A student can file a report with a type (work outside the agreed tasks, unsafe conditions, unrecorded overtime), a day within the last 90 days, and a description of at least 10 characters
+- [x] A student can find "Report a problem" from their My hours page, and sees only their own reports and each one's status
+- [x] The coordinator sees a list of their school's reports with the student's name, and can uphold or not uphold each one; the decision is final and records who decided and when
+- [x] The Dashboard shows how many reports are waiting
+- [x] A supervisor sees a report only once it is upheld, only for their own company, and never who filed it; a report that is not upheld never reaches the company
+- [x] Nobody but the student and their school's coordinator can read a submitted report
 - [ ] Works on the live URL

@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Briefcase,
   Building2,
   ClipboardCheck,
@@ -6,6 +7,7 @@ import {
   Flag,
   Handshake,
   LayoutDashboard,
+  Send,
   ShieldCheck,
   Upload,
   type LucideIcon,
@@ -36,11 +38,14 @@ export const NAV: Record<Role, NavItem[]> = {
     { key: "roster", label: "Roster", href: "/roster/upload", icon: Upload },
     { key: "companies", label: "Companies", href: "/companies", icon: Building2 },
     { key: "partnerships", label: "Partnerships", href: "/partnerships", icon: Handshake },
+    { key: "journal", label: "Journals", href: "/journal", icon: BookOpen },
     { key: "reports", label: "Reports", href: "/reports", icon: Flag },
     { key: "openings", label: "OJT openings", href: "/listings", icon: Briefcase },
   ],
   student: [
     { key: "hours", label: "My hours", href: "/my-hours", icon: Clock },
+    { key: "journal", label: "My journal", href: "/my-journal", icon: BookOpen },
+    { key: "applications", label: "My applications", href: "/my-applications", icon: Send },
     { key: "report", label: "Report a problem", href: "/report", icon: Flag },
     { key: "openings", label: "OJT openings", href: "/listings", icon: Briefcase },
   ],

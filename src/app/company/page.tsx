@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -16,9 +16,11 @@ import {
   EMPLOYER_STATUS_LABEL,
 } from "@/lib/employers";
 import { LISTING_STATUS_LABEL } from "@/lib/listings";
-import type { EmployerPartnership } from "@/lib/partnerships";
+import type { EmployerLinkRequest, EmployerPartnership } from "@/lib/partnerships";
 import { DocumentUploader } from "./document-uploader";
 import { ListingForm } from "./listing-form";
+import type { EmployerApplication } from "@/lib/applications";
+import { ApplicationsCard } from "./applications-card";
 import { PartnershipsCard } from "./partnerships-card";
 import { setListingStatus } from "./listing-actions";
 import { AppShell } from "@/components/app-shell/app-shell";
@@ -58,17 +60,29 @@ export default async function CompanyPage({
 
   // Partnerships come from database functions, because the partnerships
   // table itself cannot be read directly.
-  const [{ data: partnershipData }, { data: schoolData }] = await Promise.all([
+  const [
+    { data: partnershipData },
+    { data: schoolData },
+    { data: linkData },
+  ] = await Promise.all([
     supabase.rpc("employer_partnerships"),
     supabase.rpc("verified_schools"),
+    supabase.rpc("employer_link_requests"),
   ]);
+  const linkRequests = (linkData ?? []) as EmployerLinkRequest[];
+
+  // Students who applied for this company's openings (no emails).
+  const { data: applicationData } = await supabase.rpc("employer_applications");
+  const applications = (applicationData ?? []) as EmployerApplication[];
+  const applicationsWaiting = applications.filter((a) => a.status === "sent").length;
   const partnerships = (partnershipData ?? []) as EmployerPartnership[];
   const schools = (schoolData ?? []) as { id: string; name: string }[];
 
   // Requests schools sent to this company that are waiting for its answer.
-  const requestsWaiting = partnerships.filter(
-    (p) => p.status === "requested" && p.requested_by === "school",
-  ).length;
+  const requestsWaiting =
+    partnerships.filter(
+      (p) => p.status === "requested" && p.requested_by === "school",
+    ).length + linkRequests.filter((l) => l.status === "requested").length;
 
   // Row Level Security returns only this company's own documents.
   const { data: documents } = await supabase
@@ -122,6 +136,9 @@ export default async function CompanyPage({
       <Tabs defaultValue={verified ? "openings" : "documents"} className="gap-4">
         <TabsList>
           <TabsTrigger value="openings">Openings ({listings?.length ?? 0})</TabsTrigger>
+          <TabsTrigger value="applications">
+            Applications{applicationsWaiting > 0 ? ` (${applicationsWaiting} waiting)` : ""}
+          </TabsTrigger>
           <TabsTrigger value="partnerships">
             Partnerships{requestsWaiting > 0 ? ` (${requestsWaiting} waiting)` : ""}
           </TabsTrigger>
@@ -181,7 +198,13 @@ export default async function CompanyPage({
                           <td className="px-3 py-2">
                             {LISTING_STATUS_LABEL[l.status] ?? l.status}
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="flex gap-2 px-3 py-2">
+                            <Link
+                              href={`/company/listings/${l.id}/edit`}
+                              className={buttonVariants({ size: "sm", variant: "outline" })}
+                            >
+                              Edit
+                            </Link>
                             <form action={setListingStatus}>
                               <input type="hidden" name="listing_id" value={l.id} />
                               {l.status === "published" ? (
@@ -231,9 +254,14 @@ export default async function CompanyPage({
           </Card>
         </TabsContent>
 
+        <TabsContent value="applications">
+          <ApplicationsCard applications={applications} />
+        </TabsContent>
+
         <TabsContent value="partnerships">
           <PartnershipsCard
             partnerships={partnerships}
+            linkRequests={linkRequests}
             schools={schools}
             verified={verified}
           />

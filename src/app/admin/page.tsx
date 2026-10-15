@@ -15,6 +15,12 @@ import {
   type DocumentRow,
   type EmployerRow,
 } from "./employers-card";
+import {
+  ReportsCard,
+  type EscalatedReportRow,
+  type FlaggedCompanyRow,
+  type AppealRow,
+} from "./reports-card";
 import { AppShell } from "@/components/app-shell/app-shell";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +64,19 @@ export default async function AdminPage({
   const documents = (documentData ?? []) as DocumentRow[];
   const companiesWaiting = employers.filter((e) => e.status === "pending").length;
 
+  // Misuse reports a coordinator escalated, and companies flagged for
+  // repeated upheld reports. Neither includes any student.
+  const { data: escalatedData } = await supabase.rpc("admin_escalated_reports");
+  const escalated = (escalatedData ?? []) as EscalatedReportRow[];
+  const { data: flaggedData } = await supabase.rpc("admin_flagged_companies");
+  const flagged = (flaggedData ?? []) as FlaggedCompanyRow[];
+  const { data: appealData } = await supabase.rpc("admin_pending_appeals");
+  const appeals = (appealData ?? []) as AppealRow[];
+  const reportsWaiting =
+    escalated.length +
+    appeals.length +
+    flagged.filter((c) => c.review_state === "flagged").length;
+
   return (
     <AppShell
       role="admin"
@@ -67,13 +86,24 @@ export default async function AdminPage({
       user={user}
     >
       {error && (
-        <p role="alert" className="text-sm font-medium text-destructive">
+        <div
+          role="alert"
+          className="rounded-[8px] border border-destructive/30 bg-destructive-bg p-3 text-xs font-medium text-destructive-text"
+        >
           {error}
-        </p>
+        </div>
       )}
 
       <Tabs
-        defaultValue={waiting === 0 && companiesWaiting > 0 ? "companies" : "schools"}
+        defaultValue={
+          waiting > 0
+            ? "schools"
+            : companiesWaiting > 0
+              ? "companies"
+              : reportsWaiting > 0
+                ? "reports"
+                : "schools"
+        }
         className="gap-4"
       >
         <TabsList>
@@ -82,6 +112,9 @@ export default async function AdminPage({
           </TabsTrigger>
           <TabsTrigger value="companies">
             Companies{companiesWaiting > 0 ? ` (${companiesWaiting} waiting)` : ""}
+          </TabsTrigger>
+          <TabsTrigger value="reports">
+            Reports{reportsWaiting > 0 ? ` (${reportsWaiting} waiting)` : ""}
           </TabsTrigger>
         </TabsList>
         <TabsContent value="schools">
@@ -156,6 +189,9 @@ export default async function AdminPage({
         </TabsContent>
         <TabsContent value="companies">
           <EmployersCard employers={employers} documents={documents} />
+        </TabsContent>
+        <TabsContent value="reports">
+          <ReportsCard escalated={escalated} flagged={flagged} appeals={appeals} />
         </TabsContent>
       </Tabs>
 

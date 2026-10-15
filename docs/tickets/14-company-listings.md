@@ -8,11 +8,11 @@
 
 **Status:** todo
 
-- [ ] A verified company can save a listing as a draft, publish it, close it and reopen it; it cannot publish without a scope of tasks (at least 20 characters)
-- [ ] An unverified company can save drafts but cannot publish
-- [ ] A public page at `/listings`, with no sign-in, shows published listings of verified companies with only the agreed public fields
-- [ ] The public page filters by course (a dropdown) and by "at least this many required hours"
-- [ ] Nothing else about a company or its students is readable by a visitor, and a listing disappears when it is closed or its company is no longer verified
+- [x] A verified company can save a listing as a draft, publish it, close it and reopen it; it cannot publish without a scope of tasks (at least 20 characters)
+- [x] An unverified company can save drafts but cannot publish
+- [x] A public page at `/listings`, with no sign-in, shows published listings of verified companies with only the agreed public fields
+- [x] The public page filters by course (a dropdown) and by "at least this many required hours"
+- [x] Nothing else about a company or its students is readable by a visitor, and a listing disappears when it is closed or its company is no longer verified
 - [ ] Works on the live URL
 
 **Not built:** editing the fields of an existing listing. A company closes a listing and posts a new one instead.

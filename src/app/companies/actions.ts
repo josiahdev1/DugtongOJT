@@ -146,3 +146,32 @@ export async function updateMoa(
   revalidatePath("/dashboard");
   return { message: "Saved." };
 }
+
+// Called after the browser has uploaded a signed MOA into the private
+// bucket. Records which file it is. The database refuses a path that is not
+// inside this school's own folder, and a company that is not this school's.
+export async function recordMoaDocument(
+  companyId: string,
+  storagePath: string,
+  fileName: string,
+): Promise<{ error?: string } | undefined> {
+  if (!UUID_RE.test(companyId)) return { error: "Unknown company." };
+  if (!storagePath || fileName.length === 0 || fileName.length > 200) {
+    return { error: "That file could not be recorded." };
+  }
+
+  const { supabase, school } = await getCurrentUser();
+  if (!school) return { error: "Only a coordinator can upload a MOA." };
+
+  const { error } = await supabase.from("moa_documents").insert({
+    company_id: companyId,
+    storage_path: storagePath,
+    file_name: fileName,
+  });
+  if (error) {
+    return { error: "That file could not be recorded. Please try again." };
+  }
+
+  revalidatePath("/companies");
+  return undefined;
+}

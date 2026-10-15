@@ -8,9 +8,9 @@
 
 **Status:** todo
 
-- [ ] A user can set up a company account with a company name and an authorized representative's name and position; it starts as "waiting for review"
-- [ ] The company uploads its registration and its permit (PDF, JPEG or PNG, up to 5 MB) into a private bucket, only into its own folder
-- [ ] No one but the owning company and an admin can open a document, and only through a link that lasts 60 seconds
-- [ ] An admin sees every company with the representative, the owner's email and both documents, and can verify, reject or send it back to waiting
-- [ ] A company cannot change its own status, or anyone else's documents
+- [x] A user can set up a company account with a company name and an authorized representative's name and position; it starts as "waiting for review"
+- [x] The company uploads its registration and its permit (PDF, JPEG or PNG, up to 5 MB) into a private bucket, only into its own folder
+- [x] No one but the owning company and an admin can open a document, and only through a link that lasts 60 seconds
+- [x] An admin sees every company with the representative, the owner's email and both documents, and can verify, reject or send it back to waiting
+- [x] A company cannot change its own status, or anyone else's documents
 - [ ] Works on the live URL

@@ -59,3 +59,92 @@ export async function setSchoolVerified(formData: FormData) {
   revalidatePath("/admin");
   redirect("/admin");
 }
+
+// An admin decides a report a coordinator escalated. The decision is
+// final. The database function checks the caller is an admin and that the
+// report really is escalated.
+export async function decideEscalatedReport(formData: FormData) {
+  const reportId = String(formData.get("report_id") ?? "");
+  const decision = String(formData.get("decision") ?? "");
+  if (
+    !UUID_RE.test(reportId) ||
+    (decision !== "upheld" && decision !== "not_upheld")
+  ) {
+    redirect("/admin");
+  }
+
+  const { supabase, user } = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase.rpc("admin_decide_report", {
+    report: reportId,
+    decision,
+  });
+
+  if (error) {
+    const message = encodeURIComponent(
+      "Could not save that decision. It may already have been decided.",
+    );
+    redirect(`/admin?error=${message}`);
+  }
+
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
+// An admin marks a flagged company "under review", or restores it. After a
+// restore, only reports upheld later count towards the next flag.
+export async function setCompanyReview(formData: FormData) {
+  const companyId = String(formData.get("company_id") ?? "");
+  const state = String(formData.get("state") ?? "");
+  if (!UUID_RE.test(companyId) || !["under_review", "none"].includes(state)) {
+    redirect("/admin");
+  }
+
+  const { supabase, user } = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase.rpc("admin_set_company_review", {
+    company: companyId,
+    new_state: state,
+  });
+
+  if (error) {
+    const message = encodeURIComponent("Could not update that company.");
+    redirect(`/admin?error=${message}`);
+  }
+
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
+// An admin decides a company's appeal of an upheld report. The decision is
+// final. If it is granted the database turns the report into "not upheld".
+export async function decideAppeal(formData: FormData) {
+  const appealId = String(formData.get("appeal_id") ?? "");
+  const decision = String(formData.get("decision") ?? "");
+  if (
+    !UUID_RE.test(appealId) ||
+    (decision !== "granted" && decision !== "denied")
+  ) {
+    redirect("/admin");
+  }
+
+  const { supabase, user } = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase.rpc("admin_decide_appeal", {
+    appeal: appealId,
+    decision,
+  });
+
+  if (error) {
+    const message = encodeURIComponent(
+      "Could not save that decision. It may already have been decided.",
+    );
+    redirect(`/admin?error=${message}`);
+  }
+
+  revalidatePath("/admin");
+  redirect("/admin");
+}

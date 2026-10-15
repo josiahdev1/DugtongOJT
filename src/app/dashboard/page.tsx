@@ -19,6 +19,7 @@ import {
   needsAttention,
 } from "@/lib/moa";
 import { formatHours, todayInManila } from "@/lib/time";
+import { fetchAll } from "@/lib/fetch-all";
 import { StudentsPanel, type StudentRow } from "./students-panel";
 
 export const metadata = { title: "Dashboard" };
@@ -66,21 +67,36 @@ export default async function DashboardPage({
     { data: companies },
     { data: totals },
     { count: reportsWaiting },
+    { count: journalWaiting },
     { data: changes },
     { data: partnershipData },
   ] = await Promise.all([
-    supabase
-      .from("students")
-      .select("id, name, student_no, course, company_id, required_hours")
-      .order("name"),
+    // Every student, however many: Supabase caps one request at 1000 rows.
+    fetchAll((from, to) =>
+      supabase
+        .from("students")
+        .select("id, name, student_no, course, company_id, required_hours")
+        .order("name")
+        .order("id")
+        .range(from, to),
+    ).then((data) => ({ data })),
     supabase.from("companies").select("id, name, moa_expires_on").order("name"),
     // Approved hours and pending counts, added up by the database.
-    supabase
-      .from("student_hours")
-      .select("student_id, approved_hours, pending_count"),
+    fetchAll((from, to) =>
+      supabase
+        .from("student_hours")
+        .select("student_id, approved_hours, pending_count")
+        .order("student_id")
+        .range(from, to),
+    ).then((data) => ({ data })),
     // Misuse reports still waiting for this coordinator's decision.
     supabase
       .from("reports")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "submitted"),
+    // Journal entries waiting for this coordinator's decision.
+    supabase
+      .from("journal_entries")
       .select("id", { count: "exact", head: true })
       .eq("status", "submitted"),
     // The latest decisions on anyone's hours at this school.
@@ -163,6 +179,13 @@ export default async function DashboardPage({
       link: "Open reports",
     });
   }
+  if (journalWaiting) {
+    attention.push({
+      text: `${journalWaiting} journal ${journalWaiting === 1 ? "entry is" : "entries are"} waiting for your decision.`,
+      href: "/journal",
+      link: "Open journals",
+    });
+  }
   if (partnershipRequests > 0) {
     attention.push({
       text: `${partnershipRequests} ${partnershipRequests === 1 ? "company wants" : "companies want"} to partner with your school.`,
@@ -186,7 +209,11 @@ export default async function DashboardPage({
       description={`Approvals, progress and activity for ${school.name}.`}
       user={user}
       org={{ name: school.name, verified: school.verified }}
-      counts={{ reports: reportsWaiting ?? 0, partnerships: partnershipRequests }}
+      counts={{
+        reports: reportsWaiting ?? 0,
+        partnerships: partnershipRequests,
+        journal: journalWaiting ?? 0,
+      }}
       wide
       actions={
         <>

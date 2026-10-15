@@ -75,3 +75,37 @@ export async function answerPartnership(formData: FormData) {
       : "Declined.",
   );
 }
+
+// A coordinator proposes linking one of their offline partners to the same
+// company on the platform. Nothing changes until that company accepts.
+export async function proposeLink(formData: FormData) {
+  const companyId = String(formData.get("company_id") ?? "");
+  const employerId = String(formData.get("employer_id") ?? "");
+  if (!UUID_RE.test(companyId) || !UUID_RE.test(employerId)) {
+    back("/partnerships", "error", "Choose the company to link to.");
+  }
+
+  const { supabase, school } = await getCurrentUser();
+  if (!school) redirect("/");
+
+  const { error } = await supabase.rpc("propose_link", {
+    p_company: companyId,
+    p_employer: employerId,
+  });
+  if (error) {
+    back(
+      "/partnerships",
+      "error",
+      error.message.includes("already has a link")
+        ? "That partner already has a link request."
+        : explain(error.message, "Could not send the link request."),
+    );
+  }
+
+  revalidatePath("/partnerships");
+  back(
+    "/partnerships",
+    "message",
+    "Link request sent. Nothing changes until the company accepts.",
+  );
+}

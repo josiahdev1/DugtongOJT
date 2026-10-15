@@ -233,8 +233,7 @@ not need either of these.
   internal notes, students and trust scores are never public. Visitors can
   filter by course and by "at least this many required hours". A listing
   leaves the page when it is closed or its company stops being verified.
-  Editing an existing listing is not built: a company closes it and posts
-  a new one.
+  A company can now edit a listing after it is posted (ticket 24).
 
 - **Partnerships** (ticket 15; team decisions). New table
   **partnerships**: the school, the company (empty for an offline partner),
@@ -262,16 +261,81 @@ not need either of these.
   Linking an offline partner to the same company when it later joins the
   platform is not built.
 
+- **Evaluations** (ticket 12; team decision). The student's **supervisor**
+  fills in the school's own form (`templates/OJT-Evaluation-SY2526-Google-Forms.pdf`):
+  department, supervisor name and position, ten criteria in three groups
+  rated 1 to 5 (the criteria and scale are copied word for word into
+  `src/lib/evaluation.ts`), strong points, areas for improvement, and
+  comments. New table **evaluations**, one per student. The supervisor can
+  come back and edit it; the coordinator can only read it; students cannot
+  read it. The database copies the student's name, ID, course and company
+  onto the row and records who saved it and when. The evaluation opens as a
+  printable page that the browser saves as PDF, like the hours report.
+
+- **Escalation** (ticket 17; team decisions). A coordinator can escalate a
+  misuse report that is still waiting for their decision to a Dugtong
+  admin. It then has a fourth status, `escalated`. Only an admin can decide
+  it (upheld or not upheld, final); the coordinator can no longer change it.
+  Admins see the report, the school and the company, never the student. A
+  company's `review_state` is `none`, `flagged` or `under_review`. The
+  database flags a company by itself when it has 3 upheld reports; an admin
+  then marks it under review or restores it, and after a restore only later
+  upheld reports count. "Under review" is shown to admins and to the
+  coordinator, and does not block placements. Admins work on the new
+  **Reports** tab of the Admin screen.
+
+- **Appeals** (ticket 19; team decisions). The supervisor at a company can
+  appeal a report that was upheld about their company, once per report,
+  with a written reason. New table **report_appeals**, which keeps its own
+  copy of the report's category, date and text (never the student). Only a
+  Dugtong admin decides an appeal, and the decision is final: granted turns
+  the report into "not upheld" (the supervisor stops seeing it); denied
+  changes nothing. The coordinator sees that a report was appealed and the
+  outcome. Admins decide appeals on the **Reports** tab of the Admin screen
+  and never see the student. A granted appeal does not restore a flagged
+  company by itself.
+
+- **Linking an offline partner** (ticket 20; team decisions). A coordinator
+  can propose linking one of their offline partners to the same company
+  when it joins the platform; the company must accept, and nothing changes
+  until it does. New table **partnership_links**, readable only through
+  database functions. Accepting gives the existing company row the
+  company's account and turns its offline partnership into a platform one,
+  so students, hours, reports, evaluations, MOA dates and supervisors stay
+  where they are. Only a verified company with no partnership or request
+  with the school can be linked, and an offline partner has one live link
+  request at a time (a declined one can be sent again). Merging with a
+  company the school already partners with on the platform is not built.
+
+- **Journal** (ticket 18; team decisions). New table **journal_entries**: one
+  entry per day a student logged hours, text only (20 to 2000 characters).
+  The coordinator approves or rejects it (a rejection needs a note); the
+  supervisor can read but never approves. It is separate from hours. A student
+  edits an entry until it is approved; editing a rejected one sends it again.
+  The database refuses an entry for a day with no logged hours.
+- **MOA document** (ticket 21). A coordinator uploads the signed MOA for a
+  company (private bucket, PDF, JPEG or PNG, up to 5 MB). Only that school's
+  coordinator can open it. Every upload is kept; the newest is "latest".
+- **Student certificate** (ticket 22). A student opens their own certificate
+  from My hours and saves it as a PDF, through a database function that
+  returns only their own.
+- **Dashboard paging** (ticket 23). The student list shows 25 at a time, and
+  the Dashboard fetches every student 1000 at a time so nobody is cut off.
+- **Applications** (ticket 25; team decisions). A student applies for a
+  published opening of a verified company with a short note (at most 5 waiting;
+  can withdraw and re-apply). The company accepts or declines and sees the
+  student's name, ID, course, school and note, never their email. Accepting
+  does not place the student: the coordinator deploys them, only to the
+  school's placement company belonging to the same company account (so a
+  partnership must already exist).
+
 ## Out of scope
-- Editing a listing after it is posted, and matching students to listings or applying through the app
-- Linking an offline partner to the same company when it later joins the platform
-- Escalating a misuse report to a Dugtong admin, and a company's right to appeal an upheld report
-- Storing the signed MOA document itself (only its dates are tracked)
-- Evaluation rating and the school's evaluation form
+- Matching students to listings automatically (students apply, companies decide, coordinators deploy)
 - Onboarding more than one school
 - Server-side PDF generation (the report is printed to PDF from the
   browser)
 
-Deliberate cuts from the proposal: there is no evaluation rating. (The
+Deliberate cuts from the proposal: there was no evaluation rating in the
+MVP; it was added afterwards (see "Added after the MVP"). (The
 MVP had the coordinator approving hours; supervisor approval was added
 afterwards, see "Added after the MVP".)

@@ -19,10 +19,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { getCurrentUser } from "@/lib/auth";
+import { averageRating, type Evaluation } from "@/lib/evaluation";
 import { UUID_RE } from "@/lib/ids";
 import { formatHours, hoursBetween, shortTime } from "@/lib/time";
 import { ChangeHistory } from "./change-history";
-import { decideEntry, issueCertificate } from "./actions";
+import { decideEntry, deployStudent, issueCertificate } from "./actions";
 import { AppShell } from "@/components/app-shell/app-shell";
 
 export const dynamic = "force-dynamic";
@@ -56,10 +57,13 @@ export default async function StudentDetailPage({
     { data: entries },
     { data: totals },
     { data: certificate },
+    { data: evaluation },
+    { data: applications },
+    { data: journal },
   ] = await Promise.all([
     supabase
       .from("companies")
-      .select("name, supervisor_name")
+      .select("name, supervisor_name, employer_id")
       .eq("id", student.company_id)
       .maybeSingle(),
     supabase
@@ -78,6 +82,27 @@ export default async function StudentDetailPage({
       .select("id")
       .eq("student_id", id)
       .maybeSingle(),
+    // Filled in by the student's supervisor; the coordinator only reads it.
+    supabase
+      .from("evaluations")
+      .select("*")
+      .eq("student_id", id)
+      .maybeSingle(),
+    // Openings this student applied for. Row Level Security returns only
+    // this school's students' applications.
+    supabase
+      .from("applications")
+      .select("id, listing_title, company_name, employer_id, status, note, created_at")
+      .eq("student_id", id)
+      .neq("status", "withdrawn")
+      .order("created_at", { ascending: false }),
+    // The student's journal. Decisions are made on the Journals page.
+    supabase
+      .from("journal_entries")
+      .select("id, work_date, status")
+      .eq("student_id", id)
+      .order("work_date", { ascending: false })
+      .limit(10),
   ]);
 
   const entryIds = (entries ?? []).map((e) => e.id);
@@ -183,6 +208,142 @@ export default async function StudentDetailPage({
           )}
         </CardContent>
       </Card>
+
+      {/* Evaluation: written by the supervisor, read here. */}
+      <Card>
+        <CardHeader className="p-5 pb-3">
+          <CardTitle>OJT evaluation</CardTitle>
+          <CardDescription>
+            The student&apos;s supervisor fills in the school&apos;s
+            evaluation form at the end of the training.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center gap-3 p-5 pt-0">
+          {evaluation ? (
+            <>
+              <Badge variant="approved">Submitted</Badge>
+              <span className="text-sm text-muted-foreground">
+                Average{" "}
+                <span className="font-mono font-medium tabular-nums text-foreground">
+                  {averageRating(evaluation as Evaluation).toFixed(1)} / 5
+                </span>
+              </span>
+              <Link
+                href={`/evaluations/${id}`}
+                className={buttonVariants({ size: "sm" })}
+              >
+                View evaluation
+              </Link>
+            </>
+          ) : (
+            <>
+              <Badge variant="pending">Not submitted</Badge>
+              <span className="text-xs text-muted-foreground">
+                Waiting for the supervisor to fill in the form.
+              </span>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Journal: read here, decided on the Journals page. */}
+      {journal && journal.length > 0 && (
+        <Card>
+          <CardHeader className="p-5 pb-3">
+            <CardTitle>Journal</CardTitle>
+            <CardDescription>
+              The latest entries this student wrote.{" "}
+              <Link href="/journal" className="underline underline-offset-4">
+                Review waiting entries
+              </Link>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2 p-5 pt-0">
+            {journal.map((j) => (
+              <div
+                key={j.id}
+                className="flex items-center justify-between gap-2 text-sm"
+              >
+                <span className="font-mono tabular-nums">{j.work_date}</span>
+                <Badge
+                  variant={
+                    j.status === "approved"
+                      ? "approved"
+                      : j.status === "rejected"
+                        ? "rejected"
+                        : "pending"
+                  }
+                >
+                  {j.status === "submitted"
+                    ? "Waiting"
+                    : j.status === "approved"
+                      ? "Approved"
+                      : "Needs changes"}
+                </Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Applications: the company decides, the coordinator deploys. */}
+      {applications && applications.length > 0 && (
+        <Card>
+          <CardHeader className="p-5 pb-3">
+            <CardTitle>Applications</CardTitle>
+            <CardDescription>
+              Openings this student applied for. A company that accepts does
+              not place the student: you deploy them to that company.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 p-5 pt-0">
+            {applications.map((a) => {
+              const deployed =
+                a.status === "accepted" && company?.employer_id === a.employer_id;
+              return (
+                <div
+                  key={a.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-[8px] border border-border p-3"
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-sm font-medium text-foreground">
+                      {a.listing_title}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {a.company_name} · applied{" "}
+                      <span className="font-mono tabular-nums">
+                        {a.created_at.slice(0, 10)}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {a.status === "sent" && (
+                      <Badge variant="pending">Waiting for the company</Badge>
+                    )}
+                    {a.status === "declined" && (
+                      <Badge variant="secondary">Declined</Badge>
+                    )}
+                    {a.status === "accepted" && (
+                      <Badge variant="approved">
+                        {deployed ? "Deployed" : "Accepted"}
+                      </Badge>
+                    )}
+                    {a.status === "accepted" && !deployed && (
+                      <form action={deployStudent}>
+                        <input type="hidden" name="application_id" value={a.id} />
+                        <input type="hidden" name="student_id" value={id} />
+                        <Button type="submit" size="sm">
+                          Deploy to {a.company_name}
+                        </Button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Time Entries Table */}
       <Card>

@@ -55,3 +55,29 @@ export async function answerSchoolRequest(formData: FormData) {
   revalidatePath("/company");
   back("message", accept ? "Accepted." : "Declined.");
 }
+
+// A company answers a request from a school to link one of the school's
+// offline partners to this company's account. Accepting gives this account
+// access to the students placed there.
+export async function answerLinkRequest(formData: FormData) {
+  const id = String(formData.get("link_id") ?? "");
+  const accept = formData.get("accept") === "true";
+  if (!UUID_RE.test(id)) redirect("/company");
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("respond_to_link", {
+    p_id: id,
+    p_accept: accept,
+  });
+  if (error) {
+    back(
+      "error",
+      error.message.includes("already been answered")
+        ? "That request has already been answered."
+        : explain(error.message, "Could not save your answer."),
+    );
+  }
+
+  revalidatePath("/company");
+  back("message", accept ? "Accepted. The school is now linked to your account." : "Declined.");
+}

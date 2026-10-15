@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ChevronRight, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -30,6 +31,9 @@ export type StudentRow = {
 
 type Tab = "all" | "waiting" | "completed";
 
+// Students shown per page. Search and the tabs look through all of them.
+const PAGE_SIZE = 25;
+
 const EMPTY: Record<Tab, string> = {
   all: "No student matches that search.",
   waiting: "Nobody has hours waiting for approval.",
@@ -38,10 +42,11 @@ const EMPTY: Record<Tab, string> = {
 
 // The coordinator's student list: filter by what needs attention, and
 // search by name, student ID, course or company. All the rows are already on
-// the page, so filtering is instant.
+// the page, so filtering is instant, and the list is shown a page at a time.
 export function StudentsPanel({ rows }: { rows: StudentRow[] }) {
   const [tab, setTab] = useState<Tab>("all");
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
 
   const isComplete = (r: StudentRow) => r.approved >= r.required;
   const counts = {
@@ -60,6 +65,46 @@ export function StudentsPanel({ rows }: { rows: StudentRow[] }) {
     );
   });
 
+  // Stay on a page that exists when the filters shrink the list.
+  const lastPage = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
+  const current = Math.min(page, lastPage);
+  const start = (current - 1) * PAGE_SIZE;
+  const visible = shown.slice(start, start + PAGE_SIZE);
+
+  const pager =
+    shown.length > PAGE_SIZE ? (
+      <nav
+        aria-label="Student list pages"
+        className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3"
+      >
+        <p className="text-xs text-muted-foreground" aria-live="polite">
+          Showing{" "}
+          <span className="font-mono tabular-nums">
+            {start + 1}–{Math.min(start + PAGE_SIZE, shown.length)}
+          </span>{" "}
+          of <span className="font-mono tabular-nums">{shown.length}</span>
+        </p>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={current === 1}
+            onClick={() => setPage(current - 1)}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={current === lastPage}
+            onClick={() => setPage(current + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      </nav>
+    ) : null;
+
   const results = (
 shown.length === 0 ? (
         <p className="p-8 text-center text-sm text-muted-foreground">
@@ -69,7 +114,7 @@ shown.length === 0 ? (
         <>
           {/* Phones: one student per row. A wide table cannot fit at 390px. */}
           <ul className="divide-y divide-border md:hidden">
-            {shown.map((r) => {
+            {visible.map((r) => {
               const percent = Math.min(100, Math.round((r.approved / r.required) * 100));
               return (
                 <li key={r.id}>
@@ -121,7 +166,7 @@ shown.length === 0 ? (
             </TableRow>
           </TableHeader>
           <TableBody>
-            {shown.map((r) => {
+            {visible.map((r) => {
               const percent = Math.min(100, Math.round((r.approved / r.required) * 100));
               return (
                 <TableRow key={r.id}>
@@ -184,7 +229,14 @@ shown.length === 0 ? (
   );
 
   return (
-    <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="gap-0">
+    <Tabs
+      value={tab}
+      onValueChange={(v) => {
+        setTab(v as Tab);
+        setPage(1);
+      }}
+      className="gap-0"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
         <TabsList>
           <TabsTrigger value="all">All ({counts.all})</TabsTrigger>
@@ -201,7 +253,10 @@ shown.length === 0 ? (
             placeholder="Search students"
             aria-label="Search students"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(1);
+            }}
             className="pl-8"
           />
         </div>
@@ -210,6 +265,7 @@ shown.length === 0 ? (
       {(["all", "waiting", "completed"] as Tab[]).map((v) => (
         <TabsContent key={v} value={v} className="mt-0">
           {results}
+          {pager}
         </TabsContent>
       ))}
     </Tabs>

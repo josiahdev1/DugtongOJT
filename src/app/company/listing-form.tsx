@@ -6,22 +6,51 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { createListing } from "./listing-actions";
+import { createListing, updateListing } from "./listing-actions";
 
-export function ListingForm({ courses }: { courses: string[] }) {
-  const [state, formAction, pending] = useActionState(createListing, undefined);
+export type EditableListing = {
+  id: string;
+  course: string;
+  role_title: string | null;
+  slots: number;
+  required_hours: number;
+  schedule: string;
+  hours_per_day: number;
+  city: string;
+  scope_of_tasks: string;
+  status: string;
+};
+
+// Posts a new opening, or (with `listing`) edits an existing one.
+export function ListingForm({
+  courses,
+  listing,
+}: {
+  courses: string[];
+  listing?: EditableListing;
+}) {
+  const [state, formAction, pending] = useActionState(
+    listing ? updateListing : createListing,
+    undefined,
+  );
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (state?.message) formRef.current?.reset();
-  }, [state]);
+    if (state?.message && !listing) formRef.current?.reset();
+  }, [state, listing]);
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
+      {listing && <input type="hidden" name="listing_id" value={listing.id} />}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
           <Label htmlFor="course">Course</Label>
-          <Select id="course" name="course" required defaultValue="">
+          <Select
+            id="course"
+            name="course"
+            required
+            defaultValue={listing?.course ?? ""}
+          >
             <option value="" disabled>
               Choose a course…
             </option>
@@ -34,11 +63,24 @@ export function ListingForm({ courses }: { courses: string[] }) {
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="role_title">Role title (optional)</Label>
-          <Input id="role_title" name="role_title" maxLength={120} />
+          <Input
+            id="role_title"
+            name="role_title"
+            maxLength={120}
+            defaultValue={listing?.role_title ?? ""}
+          />
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="slots">Number of slots</Label>
-          <Input id="slots" name="slots" type="number" min={1} max={1000} required />
+          <Input
+            id="slots"
+            name="slots"
+            type="number"
+            min={1}
+            max={1000}
+            required
+            defaultValue={listing?.slots}
+          />
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="required_hours">Required hours</Label>
@@ -49,6 +91,7 @@ export function ListingForm({ courses }: { courses: string[] }) {
             min={1}
             max={2000}
             required
+            defaultValue={listing?.required_hours}
           />
         </div>
         <div className="flex flex-col gap-2">
@@ -59,6 +102,7 @@ export function ListingForm({ courses }: { courses: string[] }) {
             maxLength={200}
             placeholder="Mon to Fri, 8:00 to 17:00"
             required
+            defaultValue={listing?.schedule}
           />
         </div>
         <div className="flex flex-col gap-2">
@@ -71,11 +115,18 @@ export function ListingForm({ courses }: { courses: string[] }) {
             max={24}
             step={0.5}
             required
+            defaultValue={listing ? Number(listing.hours_per_day) : undefined}
           />
         </div>
         <div className="flex flex-col gap-2 sm:col-span-2">
           <Label htmlFor="city">City or municipality</Label>
-          <Input id="city" name="city" maxLength={120} required />
+          <Input
+            id="city"
+            name="city"
+            maxLength={120}
+            required
+            defaultValue={listing?.city}
+          />
         </div>
       </div>
 
@@ -86,6 +137,7 @@ export function ListingForm({ courses }: { courses: string[] }) {
           name="scope_of_tasks"
           rows={5}
           maxLength={4000}
+          defaultValue={listing?.scope_of_tasks}
           placeholder="What will students actually do? Students agree to this scope, so be specific."
         />
         <p className="text-xs text-muted-foreground">
@@ -105,20 +157,39 @@ export function ListingForm({ courses }: { courses: string[] }) {
         </p>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" name="intent" value="publish" disabled={pending}>
-          {pending ? "Saving…" : "Publish"}
-        </Button>
-        <Button
-          type="submit"
-          name="intent"
-          value="draft"
-          variant="outline"
-          disabled={pending}
-        >
-          Save as draft
-        </Button>
-      </div>
+      {listing ? (
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" name="intent" value="save" disabled={pending}>
+            {pending ? "Saving…" : "Save changes"}
+          </Button>
+          {listing.status === "draft" && (
+            <Button
+              type="submit"
+              name="intent"
+              value="publish"
+              variant="outline"
+              disabled={pending}
+            >
+              Save and publish
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" name="intent" value="publish" disabled={pending}>
+            {pending ? "Saving…" : "Publish"}
+          </Button>
+          <Button
+            type="submit"
+            name="intent"
+            value="draft"
+            variant="outline"
+            disabled={pending}
+          >
+            Save as draft
+          </Button>
+        </div>
+      )}
     </form>
   );
 }

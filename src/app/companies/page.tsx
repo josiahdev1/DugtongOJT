@@ -20,6 +20,7 @@ import { describeMoa, moaStatus, needsAttention } from "@/lib/moa";
 import { todayInManila } from "@/lib/time";
 import { CompanyForm } from "./company-form";
 import { MoaForm } from "./moa-form";
+import { MoaUploader } from "./moa-uploader";
 import { SupervisorsPanel } from "./supervisors-panel";
 import { AppShell } from "@/components/app-shell/app-shell";
 
@@ -42,6 +43,15 @@ export default async function CompaniesPage() {
     .order("email");
   const supervisorsOf = (companyId: string) =>
     (supervisors ?? []).filter((s) => s.company_id === companyId);
+
+  // The signed MOA files, newest first. Only this school's coordinator can
+  // read them.
+  const { data: moaFiles } = await supabase
+    .from("moa_documents")
+    .select("id, company_id, file_name, created_at")
+    .order("created_at", { ascending: false });
+  const filesOf = (companyId: string) =>
+    (moaFiles ?? []).filter((f) => f.company_id === companyId);
 
   const today = todayInManila();
 
@@ -121,6 +131,34 @@ export default async function CompaniesPage() {
                               signedOn={c.moa_signed_on}
                               expiresOn={c.moa_expires_on}
                             />
+                          </details>
+                          <details className="mt-1 text-xs text-muted-foreground">
+                            <summary className="cursor-pointer underline underline-offset-4">
+                              {filesOf(c.id).length === 0
+                                ? "Upload the signed MOA"
+                                : `Signed MOA (${filesOf(c.id).length} ${filesOf(c.id).length === 1 ? "file" : "files"})`}
+                            </summary>
+                            {filesOf(c.id).length > 0 && (
+                              <ul className="flex flex-col gap-1 pt-2">
+                                {filesOf(c.id).map((f, i) => (
+                                  <li key={f.id}>
+                                    <a
+                                      href={`/moa/${f.id}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="font-medium text-primary-text underline underline-offset-4"
+                                    >
+                                      {f.file_name}
+                                    </a>{" "}
+                                    <span className="font-mono tabular-nums">
+                                      {f.created_at.slice(0, 10)}
+                                    </span>
+                                    {i === 0 && " · latest"}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                            <MoaUploader schoolId={school.id} companyId={c.id} />
                           </details>
                         </TableCell>
                         <TableCell>

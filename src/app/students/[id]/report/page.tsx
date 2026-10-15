@@ -8,7 +8,8 @@ import {
   shortTime,
   todayInManila,
 } from "@/lib/time";
-import { PrintButton } from "./print-button";
+import { SavePdfButton } from "@/components/save-pdf-button";
+import { pdfFileName } from "@/lib/pdf-name";
 
 export const dynamic = "force-dynamic";
 
@@ -72,10 +73,13 @@ export default async function HoursReportPage({
         >
           ← Back to student
         </Link>
-        <PrintButton />
+        <SavePdfButton
+          targetId="pdf-sheet"
+          fileName={pdfFileName(student.name, school.name, "Hours Report")}
+        />
       </div>
 
-      <article className="flex flex-col gap-6 rounded-[var(--radius)] border border-neutral-300 bg-white p-8 text-neutral-900 print:rounded-none print:border-0 print:p-0">
+      <article id="pdf-sheet" className="flex flex-col gap-6 rounded-[var(--radius)] border border-neutral-300 bg-white p-8 text-neutral-900 print:rounded-none print:border-0 print:p-0">
         <header className="flex flex-col gap-1 border-b border-neutral-300 pb-4">
           <p className="text-xs font-medium uppercase tracking-wider text-neutral-600">
             {school.name}

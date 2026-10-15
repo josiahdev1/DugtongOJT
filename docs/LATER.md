@@ -14,19 +14,19 @@ stays small enough to actually ship by Session 3.
 - Company OJT listings and a public browse page (ticket 14)
 - Partnership requests, with offline partners (ticket 15)
 - Admins, and a screen to verify schools (ticket 16)
-
-## Still to do
-- Evaluation rating and report (ticket 12). Blocked: it needs the school's real evaluation form (its criteria and rating scale). We will not invent them.
+- Evaluation form filled in by the supervisor, printable as PDF (ticket 12)
+- Escalating a misuse report to a Dugtong admin, and flagging a company reported repeatedly (ticket 17)
+- A company's right to appeal an upheld report (ticket 19)
+- Linking an offline partner to the same company when it later joins the platform (ticket 20)
+- Student journal, approved by the coordinator (ticket 18)
+- The signed MOA document itself (ticket 21)
+- Letting students see their own certificate (ticket 22)
+- Paging on the Dashboard student list (ticket 23)
+- Editing a listing after it is posted (ticket 24)
+- Students applying for a listing through the app (ticket 25)
 
 ## Parked by team decision
-- Escalating a misuse report to a Dugtong admin when the coordinator cannot resolve it, or when a company is reported repeatedly
-- A company's right to appeal an upheld report
-- Linking an offline partner (a company the coordinator typed in) to the same company when it later joins the platform
+Nothing is parked right now.
 
 ## Ideas that are not tickets yet
-- Storing the signed MOA document itself, not just its dates
-- Letting students see their own certificate
-- Paging and search on the Dashboard once a school has more than a few hundred students
-- Editing a listing after it is posted (today a company closes it and posts a new one)
-- Students applying for a listing through the app
 - Confirming the starter course list and the verification documents against CHED and the pilot school

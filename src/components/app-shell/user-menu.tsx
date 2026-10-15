@@ -42,7 +42,10 @@ export function UserMenu({ email, role }: { email: string; role: string }) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <form action={signOut}>
-          <DropdownMenuItem asChild>
+          {/* Keep the menu open on select: closing it would unmount this
+              form before the sign-out request is sent. The redirect in
+              signOut() leaves the page anyway. */}
+          <DropdownMenuItem asChild onSelect={(e) => e.preventDefault()}>
             <button type="submit" className="w-full cursor-pointer">
               <LogOut aria-hidden="true" />
               Sign out

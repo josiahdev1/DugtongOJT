@@ -9,10 +9,13 @@ import {
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import {
+  LINK_STATUS_LABEL,
   PARTNERSHIP_STATUS_LABEL,
+  type EmployerLinkRequest,
   type EmployerPartnership,
 } from "@/lib/partnerships";
 import {
+  answerLinkRequest,
   answerSchoolRequest,
   requestSchoolPartnership,
 } from "./partnership-actions";
@@ -21,10 +24,12 @@ import {
 // ones it sent, and accepted partners, plus a form to ask a school.
 export function PartnershipsCard({
   partnerships,
+  linkRequests,
   schools,
   verified,
 }: {
   partnerships: EmployerPartnership[];
+  linkRequests: EmployerLinkRequest[];
   schools: { id: string; name: string }[];
   verified: boolean;
 }) {
@@ -86,6 +91,69 @@ export function PartnershipsCard({
                 </form>
               </div>
             ))
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium">Link requests from schools</p>
+            <p className="text-xs text-muted-foreground">
+              A school already placed students with you before you joined
+              Dugtong, and asks to link that placement to your account. If you
+              accept, your account can see the students placed there, and
+              their hours, reports and evaluations stay as they are. Only
+              accept if the school really placed students with your company.
+            </p>
+          </div>
+          {linkRequests.filter((l) => l.status === "requested").length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No link requests are waiting.
+            </p>
+          ) : (
+            linkRequests
+              .filter((l) => l.status === "requested")
+              .map((l) => (
+                <div
+                  key={l.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius)] border border-border p-3"
+                >
+                  <p className="text-sm">
+                    <span className="font-medium">{l.school_name}</span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · placed students with &ldquo;{l.company_name}&rdquo; · asked{" "}
+                      {l.created_at.slice(0, 10)}
+                    </span>
+                  </p>
+                  <form action={answerLinkRequest} className="flex gap-2">
+                    <input type="hidden" name="link_id" value={l.id} />
+                    <Button type="submit" size="sm" name="accept" value="true">
+                      Accept
+                    </Button>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      variant="outline"
+                      name="accept"
+                      value="false"
+                    >
+                      Decline
+                    </Button>
+                  </form>
+                </div>
+              ))
+          )}
+          {linkRequests.some((l) => l.status !== "requested") && (
+            <ul className="text-sm text-muted-foreground">
+              {linkRequests
+                .filter((l) => l.status !== "requested")
+                .map((l) => (
+                  <li key={l.id}>
+                    {l.school_name} · {LINK_STATUS_LABEL[l.status]}{" "}
+                    {l.decided_at?.slice(0, 10)}
+                  </li>
+                ))}
+            </ul>
           )}
         </div>
 

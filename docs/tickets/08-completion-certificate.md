@@ -6,9 +6,9 @@
 
 **Status:** todo
 
-- [ ] The "Issue certificate" button appears on the student page only when approved hours are at least the required hours
-- [ ] The database itself refuses a certificate for a student who has not reached the required hours, and for another school's student
-- [ ] One certificate per student; it cannot be edited or deleted afterwards
+- [x] The "Issue certificate" button appears on the student page only when approved hours are at least the required hours
+- [x] The database itself refuses a certificate for a student who has not reached the required hours, and for another school's student
+- [x] One certificate per student; it cannot be edited or deleted afterwards
 - [ ] The certificate shows only stored values: student, course, company, school, hours completed, date issued
-- [ ] Only that school's coordinator can issue or open it
+- [x] Only that school's coordinator can issue or open it
 - [ ] Works on the live URL

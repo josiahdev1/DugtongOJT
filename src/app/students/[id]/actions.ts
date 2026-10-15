@@ -74,3 +74,34 @@ export async function issueCertificate(formData: FormData) {
   revalidatePath(`/students/${studentId}`);
   redirect(`/students/${studentId}/certificate`);
 }
+
+// The coordinator places a student with the company that accepted their
+// application. The database checks the application is accepted and one of
+// this school's, and that the school already has a partnership with that
+// company; otherwise it refuses.
+export async function deployStudent(formData: FormData) {
+  const applicationId = String(formData.get("application_id") ?? "");
+  const studentId = String(formData.get("student_id") ?? "");
+  if (!UUID_RE.test(applicationId) || !UUID_RE.test(studentId)) {
+    redirect("/dashboard");
+  }
+
+  const { supabase, school } = await getCurrentUser();
+  if (!school) redirect("/");
+
+  const { error } = await supabase.rpc("deploy_student", {
+    p_application: applicationId,
+  });
+  if (error) {
+    const message = encodeURIComponent(
+      error.message.includes("Partner with this company")
+        ? "Partner with this company first, on the Partnerships page. Then you can deploy the student."
+        : "Could not deploy the student. Please try again.",
+    );
+    redirect(`/students/${studentId}?error=${message}`);
+  }
+
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/dashboard");
+  redirect(`/students/${studentId}`);
+}
