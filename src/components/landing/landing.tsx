@@ -270,10 +270,12 @@ export async function Landing() {
               className="dugtong-logo-dark h-auto w-28"
             />
           </div>
-          <nav aria-label="Footer" className="flex items-center gap-5 text-sm text-muted-foreground">
+          <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
             <Link href="/listings" className="hover:text-foreground">OJT openings</Link>
             <Link href="/login" className="hover:text-foreground">Sign in</Link>
             <Link href="/login?mode=signup" className="hover:text-foreground">Create account</Link>
+            <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+            <Link href="/terms" className="hover:text-foreground">Terms</Link>
           </nav>
           <p className="w-full text-xs leading-5 text-muted-foreground">
             Student records are used only for OJT. Built at the PHINMA AI Builder Workshop.

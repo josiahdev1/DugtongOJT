@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +67,20 @@ export function LoginForm({ initialMode = "signin" }: { initialMode?: "signin" |
             ? "Sign in"
             : "Create account"}
       </Button>
+
+      {mode === "signup" && (
+        <p className="text-xs leading-5 text-muted-foreground">
+          By creating an account you agree to the{" "}
+          <Link href="/terms" className="underline underline-offset-4 hover:text-foreground">
+            Terms of Use
+          </Link>{" "}
+          and have read the{" "}
+          <Link href="/privacy" className="underline underline-offset-4 hover:text-foreground">
+            Privacy Notice
+          </Link>
+          .
+        </p>
+      )}
 
       <button
         type="button"
