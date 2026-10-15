@@ -156,6 +156,11 @@ export default async function MyHoursPage() {
                       </td>
                       <td className="px-3 py-2">
                         {STATUS_LABEL[e.status] ?? e.status}
+                        {e.status === "rejected" && (
+                          <span className="block text-xs text-muted-foreground">
+                            Log this day again to fix and resubmit it.
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

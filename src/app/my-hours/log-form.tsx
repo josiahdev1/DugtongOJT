@@ -56,7 +56,8 @@ export function LogForm({
           {pending ? "Saving…" : "Log hours"}
         </Button>
         <p className="text-xs text-muted-foreground">
-          Logging a day you already logged edits it, until it is approved.
+          Logging a day you already logged edits it, or resubmits it if it was
+          rejected. Approved days are locked.
         </p>
       </div>
     </form>

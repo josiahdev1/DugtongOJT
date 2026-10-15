@@ -55,16 +55,18 @@ export async function logHours(
     .eq("work_date", workDate)
     .maybeSingle();
 
-  if (existing && existing.status !== "pending") {
+  // Pending entries can be edited, and rejected ones can be fixed and
+  // sent back. Approved entries are locked.
+  if (existing && existing.status === "approved") {
     return {
-      error: `That day is already ${existing.status}, so it can no longer be changed.`,
+      error: "That day is already approved, so it can no longer be changed.",
     };
   }
 
   const { error } = existing
     ? await supabase
         .from("time_entries")
-        .update({ time_in: timeIn, time_out: timeOut })
+        .update({ time_in: timeIn, time_out: timeOut, status: "pending" })
         .eq("id", existing.id)
     : await supabase.from("time_entries").insert({
         student_id: student.id,
@@ -79,8 +81,10 @@ export async function logHours(
 
   revalidatePath("/my-hours");
   return {
-    message: existing
-      ? "Updated. It is still waiting for approval."
-      : "Saved. It is waiting for your coordinator's approval.",
+    message: !existing
+      ? "Saved. It is waiting for your coordinator's approval."
+      : existing.status === "rejected"
+        ? "Sent back for approval."
+        : "Updated. It is still waiting for approval.",
   };
 }

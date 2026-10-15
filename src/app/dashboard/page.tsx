@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
+import { formatHours } from "@/lib/time";
 import { signOut } from "../login/actions";
 
 export const dynamic = "force-dynamic";
@@ -25,14 +26,29 @@ export default async function DashboardPage({
 
   const { imported } = await searchParams;
 
-  const [{ data: students }, { data: companies }] = await Promise.all([
-    supabase
-      .from("students")
-      .select("id, name, student_no, course, company_id, required_hours")
-      .order("name"),
-    supabase.from("companies").select("id, name"),
-  ]);
+  const [{ data: students }, { data: companies }, { data: totals }] =
+    await Promise.all([
+      supabase
+        .from("students")
+        .select("id, name, student_no, course, company_id, required_hours")
+        .order("name"),
+      supabase.from("companies").select("id, name"),
+      // Approved hours and pending counts, added up by the database.
+      supabase
+        .from("student_hours")
+        .select("student_id, approved_hours, pending_count"),
+    ]);
   const companyName = new Map((companies ?? []).map((c) => [c.id, c.name]));
+  const hoursOf = new Map(
+    (totals ?? []).map((t) => [
+      t.student_id,
+      { approved: Number(t.approved_hours), pending: Number(t.pending_count) },
+    ]),
+  );
+  const totalPending = (totals ?? []).reduce(
+    (sum, t) => sum + Number(t.pending_count),
+    0,
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8">
@@ -73,7 +89,7 @@ export default async function DashboardPage({
           <CardTitle>Students</CardTitle>
           <CardDescription>
             {students && students.length > 0
-              ? `${students.length} on your roster.`
+              ? `${students.length} on your roster · ${totalPending} ${totalPending === 1 ? "entry" : "entries"} waiting for approval.`
               : "No students yet."}
           </CardDescription>
         </CardHeader>
@@ -93,14 +109,24 @@ export default async function DashboardPage({
                     <th className="px-3 py-2 font-medium">Course</th>
                     <th className="px-3 py-2 font-medium">Company</th>
                     <th className="px-3 py-2 text-right font-medium">
-                      Required hours
+                      Approved / required
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium">
+                      Pending
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {students.map((s) => (
                     <tr key={s.id} className="border-t border-border">
-                      <td className="px-3 py-2">{s.name}</td>
+                      <td className="px-3 py-2">
+                        <Link
+                          href={`/students/${s.id}`}
+                          className="font-medium underline underline-offset-4"
+                        >
+                          {s.name}
+                        </Link>
+                      </td>
                       <td className="px-3 py-2 font-mono text-xs">
                         {s.student_no}
                       </td>
@@ -109,7 +135,11 @@ export default async function DashboardPage({
                         {companyName.get(s.company_id) ?? "—"}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">
+                        {formatHours(hoursOf.get(s.id)?.approved ?? 0)} /{" "}
                         {s.required_hours}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {hoursOf.get(s.id)?.pending ?? 0}
                       </td>
                     </tr>
                   ))}
