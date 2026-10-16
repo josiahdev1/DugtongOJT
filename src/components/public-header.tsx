@@ -6,6 +6,7 @@ import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { ThemeToggleButton2 } from "@/components/v1/skiper4";
+import { cn } from "@/lib/utils";
 import {
   Sheet,
   SheetClose,
@@ -58,20 +59,22 @@ export function PublicHeader({ signedIn = false }: { signedIn?: boolean }) {
               {/* Phones get these inside the drawer, so the bar stays uncrowded. */}
               <Link
                 href="/login"
-                className={buttonVariants({
-                  variant: "outline",
-                  size: "sm",
-                  className: "hidden lg:inline-flex",
-                })}
+                // cn() resolves the clash between the button's own "inline-flex"
+                // and "hidden"; without it Tailwind v4 keeps "inline-flex" and
+                // the buttons stay on the bar (and push the menu off-screen).
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "hidden lg:inline-flex",
+                )}
               >
                 Sign in
               </Link>
               <Link
                 href="/login?mode=signup"
-                className={buttonVariants({
-                  size: "sm",
-                  className: "hidden lg:inline-flex",
-                })}
+                className={cn(
+                  buttonVariants({ size: "sm" }),
+                  "hidden lg:inline-flex",
+                )}
               >
                 Create account
               </Link>
