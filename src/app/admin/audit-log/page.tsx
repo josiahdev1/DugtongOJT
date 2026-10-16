@@ -22,7 +22,7 @@ export default async function AdminAuditLogPage() {
       <AdminEmptyState
         icon={History}
         title="No admin audit log yet"
-        description="Hour decisions are logged on each student's page (coordinator view). A log of admin decisions has not been built yet."
+        description="Approvals and rejections of hours are logged on each student's page (coordinator view). A log of admin decisions has not been built yet."
         actionHref="/admin"
         actionLabel="Return to overview"
       />

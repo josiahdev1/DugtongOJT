@@ -19,15 +19,7 @@ import {
 import { setEmployerStatus, setSchoolVerified } from "../actions";
 import type { DocumentRow, EmployerRow } from "../employers-card";
 
-type SchoolRow = {
-  id: string;
-  name: string;
-  created_at: string;
-  verified: boolean;
-  coordinator_email: string | null;
-  student_count: number;
-  company_count: number;
-};
+import type { SchoolRow } from "./data";
 
 export function VerificationPanels({
   schools,
@@ -400,17 +392,6 @@ export function VerificationPanels({
                             className="h-8 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                           >
                             Reject
-                          </Button>
-                        )}
-                        {e.status === "verified" && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setConfirmId(`reject-${e.id}`)}
-                            className="h-8 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            Remove verification
                           </Button>
                         )}
                         {e.status !== "pending" && (

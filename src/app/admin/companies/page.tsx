@@ -19,7 +19,7 @@ export default async function AdminCompaniesPage({
   const { data: isAdmin } = await supabase.rpc("is_admin");
   if (!isAdmin) notFound();
 
-  const { schools, employers, documents } = await loadVerificationData(supabase);
+  const { schools, employers, documents } = await loadVerificationData(supabase, "companies");
 
   return (
     <>

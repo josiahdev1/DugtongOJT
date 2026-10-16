@@ -16,15 +16,23 @@ export type SchoolRow = {
 // Everything the verification screens need, read through the admin-only
 // database functions (they refuse anyone who is not an admin). Shared by
 // the Verifications, Schools and Companies pages.
-export async function loadVerificationData(supabase: Supabase) {
+export async function loadVerificationData(
+  supabase: Supabase,
+  show: "both" | "schools" | "companies" = "both",
+) {
+  // A page that shows only one panel does not fetch (or send to the
+  // browser) the other panel's data.
+  const none = Promise.resolve({ data: null });
   const [{ data: schoolData }, { data: employerData }, { data: documentData }] =
     await Promise.all([
-      supabase.rpc("admin_list_schools"),
-      supabase.rpc("admin_list_employers"),
-      supabase
-        .from("employer_documents")
-        .select("id, employer_id, kind, file_name, created_at")
-        .order("created_at", { ascending: false }),
+      show === "companies" ? none : supabase.rpc("admin_list_schools"),
+      show === "schools" ? none : supabase.rpc("admin_list_employers"),
+      show === "schools"
+        ? none
+        : supabase
+            .from("employer_documents")
+            .select("id, employer_id, kind, file_name, created_at")
+            .order("created_at", { ascending: false }),
     ]);
 
   return {
