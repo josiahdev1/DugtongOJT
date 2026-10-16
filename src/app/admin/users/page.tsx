@@ -21,8 +21,8 @@ export default async function AdminUsersPage() {
       />
       <AdminEmptyState
         icon={Users}
-        title="User accounts tied to validated institutions"
-        description="Students, coordinators, and supervisors are authenticated and tied directly to verified school rosters and company partnerships."
+        title="No user directory yet"
+        description="A list of accounts and roles has not been built yet. Schools, companies and verification are managed from their own pages."
         actionHref="/admin/verifications"
         actionLabel="Review pending accounts"
       />

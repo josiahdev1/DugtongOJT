@@ -200,6 +200,7 @@ export function EscalationsView({
                   </div>
                   <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
                     <form action={setCompanyReview}>
+                      <input type="hidden" name="return_to" value="/admin/escalations" />
                       <input type="hidden" name="company_id" value={c.company_id} />
                       <input
                         type="hidden"
@@ -280,6 +281,7 @@ export function EscalationsView({
                   </span>
                   <div className="flex items-center gap-2">
                     <form action={decideEscalatedReport} className="flex-1">
+                      <input type="hidden" name="return_to" value="/admin/escalations" />
                       <input type="hidden" name="report_id" value={selectedReport.id} />
                       <input type="hidden" name="decision" value="upheld" />
                       <Button type="submit" size="sm" className="w-full h-9 text-xs">
@@ -287,6 +289,7 @@ export function EscalationsView({
                       </Button>
                     </form>
                     <form action={decideEscalatedReport} className="flex-1">
+                      <input type="hidden" name="return_to" value="/admin/escalations" />
                       <input type="hidden" name="report_id" value={selectedReport.id} />
                       <input type="hidden" name="decision" value="not_upheld" />
                       <Button type="submit" size="sm" variant="outline" className="w-full h-9 text-xs">
@@ -318,6 +321,7 @@ export function EscalationsView({
 
                 <div className="flex items-center gap-2 border-t border-border pt-4">
                   <form action={decideAppeal} className="flex-1">
+                    <input type="hidden" name="return_to" value="/admin/escalations" />
                     <input type="hidden" name="appeal_id" value={selectedAppeal.id} />
                     <input type="hidden" name="decision" value="granted" />
                     <Button type="submit" size="sm" className="w-full h-9 text-xs">
@@ -325,6 +329,7 @@ export function EscalationsView({
                     </Button>
                   </form>
                   <form action={decideAppeal} className="flex-1">
+                    <input type="hidden" name="return_to" value="/admin/escalations" />
                     <input type="hidden" name="appeal_id" value={selectedAppeal.id} />
                     <input type="hidden" name="decision" value="denied" />
                     <Button type="submit" size="sm" variant="outline" className="w-full h-9 text-xs">

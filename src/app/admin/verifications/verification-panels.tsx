@@ -33,10 +33,16 @@ export function VerificationPanels({
   schools,
   employers,
   documents,
+  show = "both",
+  returnTo = "/admin/verifications",
 }: {
   schools: SchoolRow[];
   employers: EmployerRow[];
   documents: DocumentRow[];
+  // Which panel(s) to show: the Verifications page shows both.
+  show?: "both" | "schools" | "companies";
+  // The page the admin is on, so they land back here after an action.
+  returnTo?: string;
 }) {
   const [schoolFilter, setSchoolFilter] = useState<"all" | "pending" | "verified">("all");
   const [companyFilter, setCompanyFilter] = useState<"all" | "pending" | "verified">("all");
@@ -63,8 +69,9 @@ export function VerificationPanels({
   const waitingCompaniesCount = employers.filter((e) => e.status === "pending").length;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className={`grid grid-cols-1 gap-6 ${show === "both" ? "lg:grid-cols-2" : ""}`}>
       {/* 1. SCHOOLS PANEL */}
+      {show !== "companies" && (
       <Card className="rounded-2xl border border-border bg-card shadow-xs">
         <CardHeader className="p-6 pb-4">
           <div className="flex items-center justify-between">
@@ -164,6 +171,7 @@ export function VerificationPanels({
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-destructive font-medium">Remove verification?</span>
                         <form action={setSchoolVerified}>
+                          <input type="hidden" name="return_to" value={returnTo} />
                           <input type="hidden" name="school_id" value={s.id} />
                           <input type="hidden" name="verify" value="false" />
                           <Button
@@ -197,6 +205,7 @@ export function VerificationPanels({
                       </Button>
                     ) : (
                       <form action={setSchoolVerified}>
+                        <input type="hidden" name="return_to" value={returnTo} />
                         <input type="hidden" name="school_id" value={s.id} />
                         <input type="hidden" name="verify" value="true" />
                         <Button type="submit" size="sm" className="h-8 text-xs">
@@ -212,7 +221,10 @@ export function VerificationPanels({
         </CardContent>
       </Card>
 
+      )}
+
       {/* 2. COMPANIES PANEL */}
+      {show !== "schools" && (
       <Card className="rounded-2xl border border-border bg-card shadow-xs">
         <CardHeader className="p-6 pb-4">
           <div className="flex items-center justify-between">
@@ -345,6 +357,7 @@ export function VerificationPanels({
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-destructive font-medium">Reject company?</span>
                         <form action={setEmployerStatus}>
+                          <input type="hidden" name="return_to" value={returnTo} />
                           <input type="hidden" name="employer_id" value={e.id} />
                           <input type="hidden" name="status" value="rejected" />
                           <Button
@@ -370,6 +383,7 @@ export function VerificationPanels({
                       <>
                         {e.status !== "verified" && (
                           <form action={setEmployerStatus}>
+                            <input type="hidden" name="return_to" value={returnTo} />
                             <input type="hidden" name="employer_id" value={e.id} />
                             <input type="hidden" name="status" value="verified" />
                             <Button type="submit" size="sm" className="h-8 text-xs">
@@ -399,6 +413,21 @@ export function VerificationPanels({
                             Remove verification
                           </Button>
                         )}
+                        {e.status !== "pending" && (
+                          <form action={setEmployerStatus}>
+                            <input type="hidden" name="return_to" value={returnTo} />
+                            <input type="hidden" name="employer_id" value={e.id} />
+                            <input type="hidden" name="status" value="pending" />
+                            <Button
+                              type="submit"
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 text-xs text-muted-foreground"
+                            >
+                              Back to waiting
+                            </Button>
+                          </form>
+                        )}
                       </>
                     )}
                   </div>
@@ -408,6 +437,7 @@ export function VerificationPanels({
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

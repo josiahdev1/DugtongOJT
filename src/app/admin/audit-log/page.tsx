@@ -21,8 +21,8 @@ export default async function AdminAuditLogPage() {
       />
       <AdminEmptyState
         icon={History}
-        title="Tamper-evident audit trail"
-        description="Every school verification, employer status change, and report resolution writes an immutable audit record in the database."
+        title="No admin audit log yet"
+        description="Hour decisions are logged on each student's page (coordinator view). A log of admin decisions has not been built yet."
         actionHref="/admin"
         actionLabel="Return to overview"
       />

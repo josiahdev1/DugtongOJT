@@ -1,30 +1,48 @@
 import { notFound, redirect } from "next/navigation";
-import { Building2 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { AdminEmptyState } from "../admin-empty-state";
 import { AdminPageHeader } from "../admin-page-header";
+import { loadVerificationData } from "../verifications/data";
+import { VerificationPanels } from "../verifications/verification-panels";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminCompaniesPage() {
+export default async function AdminCompaniesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+
   const { user, supabase } = await getCurrentUser();
   if (!user) redirect("/login");
 
   const { data: isAdmin } = await supabase.rpc("is_admin");
   if (!isAdmin) notFound();
 
+  const { schools, employers, documents } = await loadVerificationData(supabase);
+
   return (
     <>
       <AdminPageHeader
         title="Companies"
-        description="Host companies, registered business entities, and branch locations"
+        description="Every company account: its status, uploaded documents, and the decision to verify, reject or send it back to waiting"
       />
-      <AdminEmptyState
-        icon={Building2}
-        title="Company registry synchronized"
-        description="Partner companies become active on the marketplace once business permits and SEC/DTI registrations are approved."
-        actionHref="/admin/verifications"
-        actionLabel="Review company verifications"
+
+      {error && (
+        <div
+          role="alert"
+          className="rounded-[8px] border border-destructive/30 bg-destructive-bg p-4 text-xs font-medium text-destructive-text"
+        >
+          {error}
+        </div>
+      )}
+
+      <VerificationPanels
+        schools={schools}
+        employers={employers}
+        documents={documents}
+        show="companies"
+        returnTo="/admin/companies"
       />
     </>
   );

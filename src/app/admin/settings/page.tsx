@@ -21,8 +21,8 @@ export default async function AdminSettingsPage() {
       />
       <AdminEmptyState
         icon={Settings}
-        title="Server-side configuration active"
-        description="Core platform variables, Supabase authentication keys, and encrypted storage bucket policies are synchronized via hosted environment parameters."
+        title="No settings here yet"
+        description="Configuration (Supabase keys, sign-in redirect URLs, rate limits) is managed in the Vercel and Supabase dashboards."
         actionHref="/admin"
         actionLabel="Return to overview"
       />

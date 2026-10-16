@@ -1,30 +1,48 @@
 import { notFound, redirect } from "next/navigation";
-import { School } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { AdminEmptyState } from "../admin-empty-state";
 import { AdminPageHeader } from "../admin-page-header";
+import { loadVerificationData } from "../verifications/data";
+import { VerificationPanels } from "../verifications/verification-panels";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminSchoolsPage() {
+export default async function AdminSchoolsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+
   const { user, supabase } = await getCurrentUser();
   if (!user) redirect("/login");
 
   const { data: isAdmin } = await supabase.rpc("is_admin");
   if (!isAdmin) notFound();
 
+  const { schools, employers, documents } = await loadVerificationData(supabase);
+
   return (
     <>
       <AdminPageHeader
         title="Schools"
-        description="Institutions, campuses, and coordinator rosters enrolled across Dugtong"
+        description="Every school on Dugtong: who its coordinator is, how many students and companies it has, and whether it is verified"
       />
-      <AdminEmptyState
-        icon={School}
-        title="School directory synchronized"
-        description="Active schools and institutional rosters are reviewed and authenticated through credential verification."
-        actionHref="/admin/verifications"
-        actionLabel="Review school verifications"
+
+      {error && (
+        <div
+          role="alert"
+          className="rounded-[8px] border border-destructive/30 bg-destructive-bg p-4 text-xs font-medium text-destructive-text"
+        >
+          {error}
+        </div>
+      )}
+
+      <VerificationPanels
+        schools={schools}
+        employers={employers}
+        documents={documents}
+        show="schools"
+        returnTo="/admin/schools"
       />
     </>
   );
