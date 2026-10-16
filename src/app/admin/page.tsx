@@ -4,11 +4,7 @@ import { AdminPageHeader } from "./admin-page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { KpiCard } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
-import { hoursBetween } from "@/lib/time";
-import {
-  AdminHoursChart,
-  AdminVerificationsChart,
-} from "./admin-charts";
+import { AdminVerificationsChart } from "./admin-charts";
 import {
   AdminVerificationTable,
   type PendingCompany,
@@ -17,8 +13,6 @@ import { AdminAside, type AsideActivity, type AsideEscalation } from "./admin-as
 import { CATEGORY_LABEL } from "@/lib/reports";
 import { DOCUMENT_KINDS } from "@/lib/employers";
 import {
-  getThirtyDaysAgo,
-  buildDailyHoursSlots,
   buildWeeklySignups,
   daysSince,
   timeAgo,
@@ -53,8 +47,6 @@ export default async function AdminOverviewPage({
   const { data: isAdmin } = await supabase.rpc("is_admin");
   if (!isAdmin) notFound();
 
-  const thirtyDaysAgo = getThirtyDaysAgo();
-
   // Live queries, all in parallel.
   const [
     { data: schoolData },
@@ -62,19 +54,12 @@ export default async function AdminOverviewPage({
     { data: escalatedData },
     { data: flaggedData },
     { data: appealData },
-    { data: timeEntriesData },
   ] = await Promise.all([
     supabase.rpc("admin_list_schools"),
     supabase.rpc("admin_list_employers"),
     supabase.rpc("admin_escalated_reports"),
     supabase.rpc("admin_flagged_companies"),
     supabase.rpc("admin_pending_appeals"),
-    supabase
-      .from("time_entries")
-      .select("work_date, time_in, time_out, status")
-      .eq("status", "approved")
-      .gte("work_date", thirtyDaysAgo)
-      .order("work_date", { ascending: true }),
   ]);
 
   const schools = (schoolData ?? []) as SchoolRow[];
@@ -177,17 +162,8 @@ export default async function AdminOverviewPage({
     when: timeAgo(a.at),
   }));
 
-  // 1. Last 30 Days Approved Hours Query & Aggregation
-
-  const hoursByDate = new Map<string, number>();
-  for (const entry of (timeEntriesData ?? []) as { work_date: string; time_in: string; time_out: string }[]) {
-    const hours = hoursBetween(entry.time_in, entry.time_out);
-    hoursByDate.set(entry.work_date, (hoursByDate.get(entry.work_date) ?? 0) + hours);
-  }
-
-  const hoursChartData = buildDailyHoursSlots(hoursByDate);
-
-  // 2. Last 8 Weeks Sign-ups Aggregation
+  // Last 8 weeks of sign-ups. (An approved-hours chart was removed: an
+  // admin has no permission to read time_entries, so it could never show data.)
   const verificationsChartData = buildWeeklySignups(schools, employers);
 
   // 3. Last 12 Weeks Escalations Aggregation
@@ -258,11 +234,8 @@ export default async function AdminOverviewPage({
           {/* Company Verification Queue Table */}
           <AdminVerificationTable companies={pendingCompanies} />
 
-          {/* Analytics Grid: Approved Hours & Verifications Throughput */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-            <AdminHoursChart data={hoursChartData} />
-            <AdminVerificationsChart data={verificationsChartData} />
-          </div>
+          {/* Sign-ups per week (schools and companies) */}
+          <AdminVerificationsChart data={verificationsChartData} />
         </div>
 
         {/* Right Aside (300px): Escalations + Sparkline & Audit Log */}

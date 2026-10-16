@@ -65,7 +65,7 @@ export function ListingCard({
 
       <div className="flex items-center justify-between gap-2 pt-1">
         <Pill variant="trust">
-          {slotsRemaining} {slotsRemaining === 1 ? "slot" : "slots"} left
+          {slotsRemaining} {slotsRemaining === 1 ? "slot" : "slots"}
         </Pill>
 
         {applyHref ? (
@@ -74,11 +74,11 @@ export function ListingCard({
               Apply for placement
             </Button>
           </Link>
-        ) : (
+        ) : onApply ? (
           <Button variant="primary" size="sm" onClick={onApply}>
             Apply for placement
           </Button>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -128,15 +128,17 @@ export function UserMenu({
 
         {/* 3. Actions */}
         <div className="flex flex-col gap-0.5">
-          <DropdownMenuItem
-            asChild
-            className="flex h-9 cursor-pointer items-center gap-2.5 rounded-[8px] px-3 text-sm text-foreground hover:bg-surface-hover focus:bg-surface-hover"
-          >
-            <Link href="/admin/settings">
-              <Settings className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <span>Account settings</span>
-            </Link>
-          </DropdownMenuItem>
+          {role.toLowerCase().includes("admin") && (
+            <DropdownMenuItem
+              asChild
+              className="flex h-9 cursor-pointer items-center gap-2.5 rounded-[8px] px-3 text-sm text-foreground hover:bg-surface-hover focus:bg-surface-hover"
+            >
+              <Link href="/admin/settings">
+                <Settings className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span>Account settings</span>
+              </Link>
+            </DropdownMenuItem>
+          )}
 
           <DropdownMenuItem
             asChild

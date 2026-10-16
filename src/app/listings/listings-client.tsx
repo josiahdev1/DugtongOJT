@@ -48,6 +48,7 @@ export function ListingsClient({
   const [search, setSearch] = useState("");
   const [courseFilter, setCourseFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
+  const [minHours, setMinHours] = useState("");
   const [activeListing, setActiveListing] = useState<ListingItem | null>(null);
 
   const cities = useMemo(
@@ -66,10 +67,14 @@ export function ListingsClient({
       item.description.toLowerCase().includes(q);
     const matchesCourse = courseFilter === "all" || item.course === courseFilter;
     const matchesLocation = locationFilter === "all" || item.city === locationFilter;
-    return matchesSearch && matchesCourse && matchesLocation;
+    const min = Number(minHours);
+    const matchesHours = !minHours || !Number.isFinite(min) || item.requiredHours >= min;
+    return matchesSearch && matchesCourse && matchesLocation && matchesHours;
   });
 
-  const isFiltering = Boolean(search || courseFilter !== "all" || locationFilter !== "all");
+  const isFiltering = Boolean(
+    search || courseFilter !== "all" || locationFilter !== "all" || minHours,
+  );
 
   return (
     <div className="flex flex-col">
@@ -148,6 +153,18 @@ export function ListingsClient({
                 </option>
               ))}
             </select>
+
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={2000}
+              value={minHours}
+              onChange={(e) => setMinHours(e.target.value)}
+              placeholder="Min. hours"
+              aria-label="At least this many required hours"
+              className={`${SELECT_CLASS} w-28`}
+            />
           </div>
         </div>
       </section>
@@ -166,6 +183,7 @@ export function ListingsClient({
                 setSearch("");
                 setCourseFilter("all");
                 setLocationFilter("all");
+                setMinHours("");
               }}
               className="text-primary hover:underline font-medium"
             >
@@ -207,6 +225,13 @@ export function ListingsClient({
                     onApply={role === "student" ? () => setActiveListing(item) : undefined}
                     className="flex-1"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setActiveListing(item)}
+                    className="px-1 text-left text-xs font-medium text-primary hover:underline"
+                  >
+                    View details
+                  </button>
                   {role === "student" && status && (
                     <p className="px-1 text-xs text-muted-foreground">
                       Your application:{" "}
@@ -239,15 +264,19 @@ export function ListingsClient({
         )}
       </section>
 
-      {/* Application Modal (signed-in students only) */}
-      {activeListing && role === "student" && (
+      {/* Details for everyone; the apply form is for signed-in students only */}
+      {activeListing && (
         <Modal
           open
           onOpenChange={(open) => {
             if (!open) setActiveListing(null);
           }}
-          title={`Apply for ${activeListing.title}`}
-          description={`Submit your application to ${activeListing.companyName}.`}
+          title={role === "student" ? `Apply for ${activeListing.title}` : activeListing.title}
+          description={
+            role === "student"
+              ? `Submit your application to ${activeListing.companyName}.`
+              : `${activeListing.companyName} · ${activeListing.city}`
+          }
         >
           <div className="flex flex-col gap-4 py-2">
             <div className="rounded-[8px] bg-surface p-3 text-xs flex flex-col gap-1.5 border border-border">
@@ -281,7 +310,16 @@ export function ListingsClient({
               </div>
             )}
 
-            {appliedTo[activeListing.id] ? (
+            {role === "visitor" && (
+              <p className="text-sm text-muted-foreground">
+                <Link href="/login" className="font-medium text-primary hover:underline">
+                  Sign in
+                </Link>{" "}
+                as a student to apply.
+              </p>
+            )}
+
+            {role !== "student" ? null : appliedTo[activeListing.id] ? (
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm text-muted-foreground">
                   Your application:{" "}

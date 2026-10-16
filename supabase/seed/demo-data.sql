@@ -11,8 +11,15 @@
 --   * about 3 weeks of time entries: approved / pending / rejected
 --   * a few journal entries (only on days that have hours)
 --   * 5 misuse reports (submitted, escalated, upheld, not upheld)
---   * ONLY IF a verified employer account already exists: 4 listings and
---     a few applications (otherwise those parts are skipped with a NOTICE)
+--   * OPT-IN ONLY (v_seed_listings below, default false): 4 listings and a
+--     few applications under the oldest verified employer. They are OFF by
+--     default because published listings appear on the PUBLIC openings page
+--     and real students could apply to them.
+--
+-- HEADS UP: this adds data to the LIVE school (the oldest coordinator's),
+-- including one escalated and one upheld misuse report, which show up in
+-- the real admin escalation queue and the dashboard counts. Run the
+-- CLEANUP block at the bottom when the demo is over.
 --
 -- WHAT IT NEVER DOES: update, delete or overwrite any existing row,
 -- and it never touches auth.users. Demo students are roster rows only:
@@ -45,6 +52,7 @@ do $$
 declare
   v_school   uuid;
   v_today    date := (now() at time zone 'Asia/Manila')::date;
+  v_seed_listings boolean := false;  -- true = also add demo listings/applications (public!)
   v_employer uuid;
   v_verified boolean;
   v_n        integer;
@@ -235,7 +243,9 @@ begin
   select e.id into v_employer
   from public.employers e where e.status = 'verified' order by e.created_at limit 1;
 
-  if v_employer is null then
+  if not v_seed_listings then
+    raise notice 'Listings and applications SKIPPED (v_seed_listings is false).';
+  elsif v_employer is null then
     raise notice 'No verified employer exists: listings and applications SKIPPED.';
   else
     insert into public.listings
@@ -318,7 +328,9 @@ $$;
 --  where student_id in (select id from public.students where student_no like 'DEMO-%' and email like '%@example.test')
 --     or listing_id  in (select id from public.listings where role_title like '% (demo)');
 --
--- delete from public.listings where role_title like '% (demo)';
+-- delete from public.listings
+--  where role_title like '% (demo)'
+--    and employer_id = (select e.id from public.employers e where e.status = 'verified' order by e.created_at limit 1);
 --
 -- delete from public.reports
 --  where student_id in (select id from public.students where student_no like 'DEMO-%' and email like '%@example.test');
@@ -343,8 +355,11 @@ $$;
 --
 -- -- partnerships first: deleting a company would only blank their company_id
 -- delete from public.partnerships
---  where company_id in (select id from public.companies where name like '% (demo)');
+--  where company_id in (select id from public.companies where name like '% (demo)'
+--    and school_id = (select c.school_id from public.coordinators c order by c.created_at limit 1));
 --
--- delete from public.companies where name like '% (demo)';
+-- delete from public.companies
+--  where name like '% (demo)'
+--    and school_id = (select c.school_id from public.coordinators c order by c.created_at limit 1);
 --
 -- commit;

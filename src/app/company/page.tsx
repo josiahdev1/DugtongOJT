@@ -102,11 +102,6 @@ export default async function CompanyPage({
         name: employer.name,
         verified: verified ? true : employer.status === "pending" ? false : undefined,
       }}
-      counts={{
-        openings: listings.length,
-        applications: applicationsWaiting,
-        partnerships: requestsWaiting,
-      }}
       wide
       actions={
         <div className="flex items-center gap-2">
